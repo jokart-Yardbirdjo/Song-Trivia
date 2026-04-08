@@ -315,29 +315,15 @@
             <button class="btn btn-main" id="start-btn-top" style="margin-bottom: 10px;" onclick="startGame()">▶ PLAY CUSTOM GAME</button>
 
             <label class="section-label">1. Select Game Mode</label>
-            <div class="card-group" id="mode-group">
-                <div class="select-card active" onclick="setMode('genre', this)">
-                    <div class="card-title">🎵 Guess the Artist & Song</div>
-                    <div class="card-desc">Play by Era, Decade, or specific Genre.</div>
-                </div>
-                <div class="select-card" onclick="setMode('artist', this)">
-                    <div class="card-title">🎤 Guess the Song</div>
-                    <div class="card-desc">Focus strictly on a single Artist's catalog.</div>
-                </div>
-                <div class="select-card" onclick="setMode('movie', this)">
-                    <div class="card-title">🎬 Guess the Movie</div>
-                    <div class="card-desc">Identify the film from its original soundtrack.</div>
-                </div>
-            </div>
+            <div class="card-group" id="mode-group"></div>
 
             <div id="sub-selection-area">
                 <label class="section-label" id="sub-label">Select Era / Genre</label>
                 <div class="pill-group" id="sub-pills"></div>
             </div>
-            
-            <input type="text" id="custom-input" class="hidden" placeholder="Separate multiple entries with a comma (e.g., Nirvana, 90s)">
+            <input type="text" id="custom-input" class="hidden" placeholder="Separate multiple entries with a comma">
 
-            <div style="display: flex; gap: 15px; margin-top: 5px;">
+            <div id="players-rounds-area" style="display: flex; gap: 15px; margin-top: 5px;">
                 <div style="flex:1;">
                     <label class="section-label">Players</label>
                     <div class="pill-grid" id="players-group">
@@ -358,21 +344,8 @@
                 </div>
             </div>
 
-            <label class="section-label">2. Select Difficulty</label>
-            <div class="card-group" id="level-group" style="margin-bottom: 20px;">
-                <div id="lvl-easy" class="select-card active" onclick="setLevel('easy', this)">
-                    <div class="card-title">🟢 Easy (Top Hits)</div>
-                    <div class="card-desc">30 seconds. Plays the biggest iconic hits. Multiple Choice Lifeline drops in at 10s.</div>
-                </div>
-                <div id="lvl-medium" class="select-card" onclick="setLevel('medium', this)">
-                    <div class="card-title">🟡 Medium (Deep Catalog)</div>
-                    <div class="card-desc">30 seconds. Pulls from all available songs, including B-sides. Lifeline enabled.</div>
-                </div>
-                <div id="lvl-hard" class="select-card" onclick="setLevel('hard', this)">
-                    <div class="card-title">🔴 Hard (The 10s Sprint)</div>
-                    <div class="card-desc">Brutal 10-second audio cutoff. Full catalog. Pure recall typing. <strong>No Lifeline.</strong></div>
-                </div>
-            </div>
+            <label class="section-label" id="level-label-text">2. Select Difficulty</label>
+            <div class="card-group" id="level-group" style="margin-bottom: 20px;"></div>
             
             <div id="feedback-setup" style="margin-top:15px; color:var(--brand); font-weight:bold;"></div>
             <button class="btn btn-reset hidden" id="cancel-setup-btn" onclick="location.reload()" style="margin-top: 20px;">Cancel Multiplayer</button>
