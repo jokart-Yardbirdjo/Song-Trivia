@@ -42,6 +42,7 @@ export async function createRoom() {
     await db.ref(`rooms/${state.roomCode}`).set({
         state: 'lobby',
         settings: state.gameState,
+        cartridgeId: state.activeCartridgeId, // <--- ADD THIS LINE!
         createdAt: firebase.database.ServerValue.TIMESTAMP
     });
 
@@ -113,6 +114,15 @@ export async function joinRoom() {
     db.ref(`rooms/${state.roomCode}/state`).on('value', (snap) => {
         if (!snap.exists()) { location.reload(); }
         else if (snap.val() === 'playing') {
+            
+            // --- NEW: FETCH AND LOAD THE CORRECT CARTRIDGE ---
+                db.ref(`rooms/${state.roomCode}/cartridgeId`).once('value', cartSnap => {
+                    if(cartSnap.exists() && window.loadCartridge) {
+                        window.loadCartridge(cartSnap.val());
+                    }
+                });
+            // -------------------------------------------------
+            
             document.getElementById('client-wait-screen').classList.add('hidden');
             document.getElementById('client-play-screen').classList.remove('hidden');
             
