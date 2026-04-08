@@ -17,7 +17,7 @@ export const manifest = {
         { id: "medium", title: "🟡 Medium (Deep Catalog)", desc: "30s. All songs, including B-sides. Lifeline enabled." },
         { id: "hard", title: "🔴 Hard (The 10s Sprint)", desc: "10s cutoff. Pure recall typing. No Lifeline." }
     ],
-    clientUI: "typing-and-mc" // Tells the phone to show text boxes initially
+    clientUI: "typing-and-mc" 
 };
 
 function saveStats() {
@@ -455,7 +455,8 @@ function nextTrack() {
         document.getElementById('main-title').style.color = '#ffffff';
         tag.innerText = `ROUND ${state.curIdx + 1} / ${state.maxRounds}`;
         tag.style.color = "var(--highlight)"; tag.style.borderColor = "var(--highlight)";
-        db.ref(`rooms/songtrivia/${state.roomCode}/currentRound`).set(state.curIdx + 1);
+        db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
+        db.ref(`rooms/${state.roomCode}/currentMC`).remove(); // WIPE CLIENT UI CLEAN FOR NEW ROUND!
     } else {
         updateLeaderboard(pIdx); 
         document.documentElement.style.setProperty('--active-vis', currentColor);
@@ -477,28 +478,15 @@ function nextTrack() {
         document.getElementById('feedback').innerHTML = `<div id="host-lock-status" style="color:var(--brand); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>`;
         document.getElementById('feedback').classList.add('fade-in');
 
-        db.ref(`rooms/songtrivia/${state.roomCode}/players`).once('value', snap => {
+        db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             if (snap.exists()) {
                 let updates = {};
                 snap.forEach(p => { updates[`${p.key}/status`] = 'guessing'; updates[`${p.key}/guess`] = null; });
-                db.ref(`rooms/songtrivia/${state.roomCode}/players`).update(updates);
+                db.ref(`rooms/${state.roomCode}/players`).update(updates);
             }
         });
 
-        const correctStr = getMCLabel(state.songs[state.curIdx]);
-        let wrongOptionsPool = [];
-        state.globalPool.forEach(s => {
-            let str = getMCLabel(s);
-            if (str !== correctStr && str !== "Unknown Movie" && str !== "Unknown") wrongOptionsPool.push(str);
-        });
-        wrongOptionsPool = [...new Set(wrongOptionsPool)].sort(() => 0.5 - Math.random());
-        
-        let options = [{ str: correctStr, isCorrect: true }];
-        wrongOptionsPool.slice(0, 3).forEach(str => options.push({ str: str, isCorrect: false }));
-        options = options.sort(() => 0.5 - Math.random());
-
-        db.ref(`rooms/songtrivia/${state.roomCode}/currentMC`).set(options);
-        db.ref(`rooms/songtrivia/${state.roomCode}/lifelineForced`).set(false);
+        db.ref(`rooms/${state.roomCode}/lifelineForced`).set(false);
     } else {
         document.getElementById('btn-container').classList.remove('hidden');
         document.getElementById('stop-btn').classList.remove('hidden');
@@ -528,14 +516,14 @@ function startRoundClock() {
     state.timerId = setInterval(() => {
         state.timeLeft--; document.getElementById('timer').innerText = state.timeLeft;
         if (state.isMultiplayer && state.isHost) {
-            db.ref(`rooms/songtrivia/${state.roomCode}/timeLeft`).set(state.timeLeft);
-            db.ref(`rooms/songtrivia/${state.roomCode}/phase`).set(state.isGracePeriod ? 'grace' : 'audio');
+            db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
+            db.ref(`rooms/${state.roomCode}/phase`).set(state.isGracePeriod ? 'grace' : 'audio');
         }
         if (state.timeLeft <= 3 && state.timeLeft > 0 && !state.hasUsedLifeline) { 
             document.getElementById('timer').style.color = '#ff3333'; sfxTick.currentTime = 0; sfxTick.play().catch(e => {}); 
         }
         if (state.timeLeft === 10 && !state.isGracePeriod && state.gameState.level !== 'hard' && !state.hasUsedLifeline) {
-            if (state.isMultiplayer && state.isHost) { db.ref(`rooms/songtrivia/${state.roomCode}/lifelineForced`).set(true); } else { triggerLifeline(); }
+            if (state.isMultiplayer && state.isHost) { db.ref(`rooms/${state.roomCode}/lifelineForced`).set(true); triggerLifeline(); } else { triggerLifeline(); }
         }
         
         if (state.timeLeft <= 0) {
@@ -548,7 +536,7 @@ function startRoundClock() {
                 document.getElementById('visualizer').classList.add('paused');
                 
                 if (state.isMultiplayer && state.isHost) {
-                    db.ref(`rooms/songtrivia/${state.roomCode}/players`).once('value', snap => { evaluateMultiplayerRound(snap.val()); });
+                    db.ref(`rooms/${state.roomCode}/players`).once('value', snap => { evaluateMultiplayerRound(snap.val()); });
                 } else if (state.hasUsedLifeline) {
                     evaluateGuess(false); 
                 } else {
@@ -627,6 +615,11 @@ function setupMC() {
         const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt.str;
         btn.onclick = () => evaluateGuess(opt.correct); container.appendChild(btn);
     });
+
+    if (state.isMultiplayer && state.isHost) {
+        let fbOptions = options.map(opt => ({ str: opt.str, isCorrect: opt.correct }));
+        db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions);
+    }
 }
 
 export function submitClientMCGuess(isCorrect) {
@@ -634,7 +627,7 @@ export function submitClientMCGuess(isCorrect) {
     const currentPhase = !document.getElementById('client-grace-msg').classList.contains('hidden') ? 'grace' : 'audio';
     const finalTime = Math.min(10, currentTime);
 
-    db.ref(`rooms/songtrivia/${state.roomCode}/players/${state.myPlayerId}`).update({
+    db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({
         guess: { isMC: true, correct: isCorrect, time: finalTime, phase: currentPhase },
         status: 'locked'
     });
@@ -819,7 +812,7 @@ function endGameSequence() {
     const maxScore = Math.max(...normalizedScores); const winIdx = normalizedScores.indexOf(maxScore);
 
     if (state.isMultiplayer && state.isHost && state.roomCode) {
-        db.ref(`rooms/songtrivia/${state.roomCode}/players`).once('value', snap => {
+        db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             const players = snap.val();
             if (players) {
                 const pIds = Object.keys(players);
@@ -827,7 +820,7 @@ function endGameSequence() {
                 pIds.forEach((pid, index) => {
                     const normScore = normalizedScores[index] || 0;
                     finalResults.push({ name: players[pid].name, score: normScore, id: pid });
-                    db.ref(`rooms/songtrivia/${state.roomCode}/players/${pid}`).update({ finalScore: normScore });
+                    db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: normScore });
                 });
                 
                 finalResults.sort((a, b) => b.score - a.score); 
@@ -842,7 +835,7 @@ function endGameSequence() {
                 const challengeBtn = document.querySelector('button[onclick="shareChallenge()"]'); if(challengeBtn) challengeBtn.style.display = 'none';
                 const playlistBox = document.querySelector('.playlist-box'); if(playlistBox) playlistBox.style.display = 'none';
             }
-            db.ref(`rooms/songtrivia/${state.roomCode}/state`).set('finished');
+            db.ref(`rooms/${state.roomCode}/state`).set('finished');
         });
     } else {
         document.getElementById('winner-text').innerText = state.numPlayers > 1 ? `🏆 PLAYER ${winIdx + 1} WINS! Total: ${maxScore} Pts` : `🏆 Final Score: ${maxScore} Pts`;
