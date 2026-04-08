@@ -189,30 +189,27 @@ export async function startMultiplayerGame() {
     
     await db.ref(`rooms/${state.roomCode}`).update({ state: 'playing', currentRound: 1, mode: state.gameState.mode });
 
-    // The Generic Lock-in Listener
+    // The normal host listener (just waits for everyone to lock in)
     db.ref(`rooms/${state.roomCode}/players`).on('value', (snap) => {
         if (!state.isHost || !snap.exists()) return;
         
         const players = snap.val();
-        let allLocked = true;
-        let lockedCount = 0;
-        let totalPlayers = 0;
+        let allLocked = true; let lockedCount = 0; let totalPlayers = 0;
         
-        Object.values(players).forEach(p => {
-            totalPlayers++;
-            if (p.status === 'locked') lockedCount++;
-            else allLocked = false;
+        Object.keys(players).forEach(pid => {
+            const p = players[pid]; totalPlayers++;
+            if (p.status === 'locked') lockedCount++; else allLocked = false;
         });
 
         const lockStatusDiv = document.getElementById('host-lock-status');
         if (lockStatusDiv) lockStatusDiv.innerText = `LOCKED IN: ${lockedCount} / ${totalPlayers}`;
 
         if (allLocked && totalPlayers > 0 && !state.isProcessing) {
-            window.evaluateMultiplayerRound(players); // Generic route back to the cartridge!
+            window.evaluateMultiplayerRound(players); 
         }
     });
 
-    window.startGame(); // Starts whatever cartridge is loaded
+    window.startGame(); 
 }
 
 export async function cancelLobby() {
@@ -253,21 +250,13 @@ export function submitClientTextGuess() {
 }
 
 export function requestClientLifeline() {
-    // Ping the host to drop the multiple choice options early
-    db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({ 
-        wantsLifeline: true 
+    // The phone secretly grabs the pre-generated buttons from the background!
+    db.ref(`rooms/${state.roomCode}/roundMC`).once('value', snap => {
+        if (snap.exists()) {
+            document.getElementById('client-text-inputs').classList.add('hidden');
+            renderClientMC(snap.val());
+        }
     });
-    
-    // Give the user visual feedback that the request was sent
-    const btn = document.querySelector('button[onclick="requestClientLifeline()"]');
-    if (btn) {
-        btn.innerText = "WAITING FOR HOST...";
-        btn.disabled = true;
-        setTimeout(() => { 
-            btn.innerText = "MULTIPLE CHOICE"; 
-            btn.disabled = false; 
-        }, 3000); // Reset button after 3 seconds
-    }
 }
 
 function renderClientMC(options) {
