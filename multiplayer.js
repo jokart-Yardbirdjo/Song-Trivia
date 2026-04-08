@@ -221,9 +221,48 @@ export async function cancelActiveGame() {
     }
 }
 
-// Left blank intentionally for when we re-introduce text-guessing games later
-export function submitClientTextGuess() {} 
-export function requestClientLifeline() {}
+export function submitClientTextGuess() {
+    // 1. Grab what the player typed
+    const artist = document.getElementById('client-guess-artist').value.trim();
+    const song = document.getElementById('client-guess-song').value.trim();
+    const movie = document.getElementById('client-guess-movie').value.trim();
+    
+    // 2. Note how fast they answered
+    const currentTime = parseInt(document.getElementById('client-timer-display').innerText) || 0;
+    
+    // 3. Push it to Firebase so the Host (TV) can grade it!
+    db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({
+        guess: { isMC: false, artist: artist, song: song, movie: movie, time: currentTime },
+        status: 'locked'
+    });
+    
+    // 4. Hide the text boxes and show the "Locked" screen
+    document.getElementById('client-text-inputs').classList.add('hidden');
+    document.getElementById('client-locked-screen').classList.remove('hidden');
+    
+    // 5. Clear the text boxes so they are empty for the next round
+    document.getElementById('client-guess-artist').value = '';
+    document.getElementById('client-guess-song').value = '';
+    document.getElementById('client-guess-movie').value = '';
+}
+
+export function requestClientLifeline() {
+    // Ping the host to drop the multiple choice options early
+    db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({ 
+        wantsLifeline: true 
+    });
+    
+    // Give the user visual feedback that the request was sent
+    const btn = document.querySelector('button[onclick="requestClientLifeline()"]');
+    if (btn) {
+        btn.innerText = "WAITING FOR HOST...";
+        btn.disabled = true;
+        setTimeout(() => { 
+            btn.innerText = "MULTIPLE CHOICE"; 
+            btn.disabled = false; 
+        }, 3000); // Reset button after 3 seconds
+    }
+}
 
 function renderClientMC(options) {
     const mcContainer = document.getElementById('client-mc-inputs');
