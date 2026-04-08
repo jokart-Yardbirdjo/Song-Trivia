@@ -28,6 +28,7 @@ window.forceLifeline = () => activeCartridge.forceLifeline();
 window.evaluateGuess = (isCorrect) => activeCartridge.evaluateGuess(isCorrect);
 window.resetStats = () => activeCartridge.resetStats();
 window.shareChallenge = () => activeCartridge.shareChallenge();
+window.evaluateMultiplayerRound = (players) => activeCartridge.evaluateMultiplayerRound(players);
 
 window.onload = () => {
     // Tell UI to build the screen based on the active cartridge!
