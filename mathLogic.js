@@ -1,6 +1,19 @@
 // mathLogic.js
 import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
 
+export const manifest = {
+    id: "fast_math",
+    title: "FAST MATH",
+    subtitle: "Quick-fire arithmetic battles",
+    modes: [
+        { id: "addition", title: "➕ Addition", desc: "Classic 2-digit sums." }
+    ],
+    levels: [
+        { id: "easy", title: "🟢 Easy", desc: "10 seconds to answer." }
+    ],
+    clientUI: "multiple-choice" // Tells the phone to hide typing boxes
+};
+
 // We map the same export names so app.js doesn't break
 export function resetStats() { alert("Stats reset not needed for Math Test"); }
 export function startDailyChallenge() { alert("Daily mode not enabled for Math Test"); }
