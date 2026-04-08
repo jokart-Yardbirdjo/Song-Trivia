@@ -306,7 +306,25 @@
             <button class="btn btn-main" onclick="location.reload()">Return to Main Menu</button>
         </div>
 
-        <div id="setup-screen">
+        <div id="main-menu-screen">
+            <h2 style="color:var(--brand); margin-bottom: 25px; font-size: 2rem;">Select a Game</h2>
+            <div class="card-group">
+                <div class="select-card" onclick="selectGame('song_trivia')" style="text-align: center; padding: 25px; margin-bottom: 15px;">
+                    <div style="font-size: 3.5rem; margin-bottom: 10px;">🎵</div>
+                    <div class="card-title" style="font-size: 1.5rem;">Song Trivia</div>
+                    <div class="card-desc" style="font-size: 1rem;">The original Yardbird masterpiece. Guess the artist, song, or movie.</div>
+                </div>
+                <div class="select-card" onclick="selectGame('fast_math')" style="text-align: center; padding: 25px;">
+                    <div style="font-size: 3.5rem; margin-bottom: 10px;">➕</div>
+                    <div class="card-title" style="font-size: 1.5rem;">Fast Math</div>
+                    <div class="card-desc" style="font-size: 1rem;">Quick-fire arithmetic battles. Speed is everything!</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="setup-screen" class="hidden">
+
+        <div id="setup-screen" class="hidden">
             <div>
                 <button class="btn btn-daily" id="daily-btn-top" onclick="startDailyChallenge()">🌍 PLAY TODAY THREE</button>
                 <div style="font-size:0.75rem; color:#aaa; text-transform:uppercase; margin-top:5px; font-weight: bold;">The Daily Global Synced Challenge</div>
