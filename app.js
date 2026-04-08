@@ -6,7 +6,8 @@ import { handleHostSetup, handleJoinScreen, createRoom, joinRoom, startMultiplay
 import * as SongTrivia from './gameLogic.js';
 import * as FastMath from './mathLogic.js';
 
-let activeCartridge = SongTrivia; 
+// Attach to window so buttons can always find the active cartridge
+window.activeCartridge = SongTrivia; 
 
 window.showModal = showModal; window.hideModal = hideModal;
 window.setMode = setMode; window.setSub = setSub; window.setPill = setPill; window.setLevel = setLevel;
@@ -17,40 +18,46 @@ window.startMultiplayerGame = startMultiplayerGame; window.cancelLobby = cancelL
 window.cancelActiveGame = cancelActiveGame; window.submitClientTextGuess = submitClientTextGuess;
 window.requestClientLifeline = requestClientLifeline;
 
-// 🕹️ NEW: THE UNIVERSAL CARTRIDGE LOADER
 window.loadCartridge = (gameId) => {
-    activeCartridge = gameId === 'fast_math' ? FastMath : SongTrivia;
+    window.activeCartridge = gameId === 'fast_math' ? FastMath : SongTrivia;
     state.activeCartridgeId = gameId;
-    
-    // Update the UI dynamically
-    document.getElementById('main-title').innerText = activeCartridge.manifest.title;
-    updatePlatformUI(gameId); // Changes Rules and Stats modals!
+    document.getElementById('main-title').innerText = window.activeCartridge.manifest.title;
+    updatePlatformUI(gameId); 
 };
 
 window.selectGame = (gameId) => {
-    window.loadCartridge(gameId); // Plug it in!
-    
-    buildSetupScreen(activeCartridge.manifest);
-    if (gameId === 'song_trivia') renderSubPills();
+    try {
+        window.loadCartridge(gameId); 
+        buildSetupScreen(window.activeCartridge.manifest);
+        if (gameId === 'song_trivia') renderSubPills();
 
-    document.getElementById('main-menu-screen').classList.add('hidden');
-    document.getElementById('setup-screen').classList.remove('hidden');
+        document.getElementById('main-menu-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+    } catch(e) {
+        console.error("Cartridge Load Error:", e);
+        alert("Oops! The engine hit an error loading this game. Check the console.");
+    }
 };
 
-// Route universal buttons to the active cartridge
-window.startDailyChallenge = () => activeCartridge.startDailyChallenge();
-window.startGame = () => activeCartridge.startGame();
-window.handleStop = () => activeCartridge.handleStop();
-window.forceLifeline = () => activeCartridge.forceLifeline();
-window.evaluateGuess = (isCorrect) => activeCartridge.evaluateGuess(isCorrect);
-window.resetStats = () => activeCartridge.resetStats();
-window.shareChallenge = () => activeCartridge.shareChallenge();
-window.evaluateMultiplayerRound = (players) => activeCartridge.evaluateMultiplayerRound(players);
+window.startDailyChallenge = () => window.activeCartridge.startDailyChallenge();
+window.startGame = () => window.activeCartridge.startGame();
+window.handleStop = () => window.activeCartridge.handleStop();
+window.forceLifeline = () => window.activeCartridge.forceLifeline();
+window.evaluateGuess = (isCorrect) => window.activeCartridge.evaluateGuess(isCorrect);
+window.resetStats = () => window.activeCartridge.resetStats();
+window.shareChallenge = () => window.activeCartridge.shareChallenge();
+window.evaluateMultiplayerRound = (players) => window.activeCartridge.evaluateMultiplayerRound(players);
 
 window.onload = () => {
-    // Set Main Menu defaults
     document.getElementById('main-title').innerText = "YARDBIRD'S GAMES";
     updatePlatformUI('main_menu'); 
+    
+    // Safely check the nested song_trivia stats
+    const todayStr = new Date().toDateString();
+    if (state.userStats.song_trivia && state.userStats.song_trivia.lastPlayedDate !== todayStr && state.userStats.song_trivia.lastPlayedDate !== null) {
+        state.userStats.song_trivia.playedDailyToday = false;
+        localStorage.setItem('yardbirdStatsV6', JSON.stringify(state.userStats.song_trivia));
+    }
     
     setupDailyButton();
 
