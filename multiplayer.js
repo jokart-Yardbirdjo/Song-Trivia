@@ -121,26 +121,11 @@ export async function joinRoom() {
     db.ref(`rooms/${state.roomCode}/state`).on('value', (snap) => {
         if (!snap.exists()) { location.reload(); }
         else if (snap.val() === 'playing') {
-            
-            // --- NEW: FETCH AND LOAD THE CORRECT CARTRIDGE ---
-                db.ref(`rooms/${state.roomCode}/cartridgeId`).once('value', cartSnap => {
-                    if(cartSnap.exists() && window.loadCartridge) {
-                        window.loadCartridge(cartSnap.val());
-                    }
-                });
-            // -------------------------------------------------
-            
+            db.ref(`rooms/${state.roomCode}/cartridgeId`).once('value', cartSnap => {
+                if(cartSnap.exists() && window.loadCartridge) window.loadCartridge(cartSnap.val());
+            });
             document.getElementById('client-wait-screen').classList.add('hidden');
             document.getElementById('client-play-screen').classList.remove('hidden');
-            
-            // Wait for the Host to push MC options. If the game is MC only, hide text boxes.
-            db.ref(`rooms/${state.roomCode}/currentMC`).on('value', mcSnap => {
-                if(mcSnap.exists()) {
-                    document.getElementById('client-text-inputs').classList.add('hidden');
-                    renderClientMC(mcSnap.val());
-                }
-            });
-
         } else if (snap.val() === 'finished') {
             document.getElementById('client-play-screen').classList.add('hidden');
             document.getElementById('client-end-screen').classList.remove('hidden');
@@ -150,26 +135,44 @@ export async function joinRoom() {
         }
     });
 
-    db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}/status`).on('value', snap => {
-        if (snap.val() === 'guessing') {
-            document.getElementById('client-locked-screen').classList.add('hidden');
-            
-            // If the host pushed multiple choice, show MC. Otherwise, show text boxes!
-            db.ref(`rooms/${state.roomCode}/currentMC`).once('value', mcSnap => {
-                if (mcSnap.exists()) {
-                    document.getElementById('client-mc-inputs').classList.remove('hidden');
-                } else {
-                    document.getElementById('client-text-inputs').classList.remove('hidden');
-                }
-            });
+    // 1. THE LIFELINE LISTENER: Wakes up instantly when Host pushes Multiple Choice
+    db.ref(`rooms/${state.roomCode}/currentMC`).on('value', mcSnap => {
+        if(mcSnap.exists()) {
+            document.getElementById('client-text-inputs').classList.add('hidden');
+            renderClientMC(mcSnap.val());
         }
     });
 
+    // 2. THE AUTO-WAKEUP LISTENER: Resets the phone perfectly for every new round
+    db.ref(`rooms/${state.roomCode}/currentRound`).on('value', snap => {
+        if(snap.exists() && document.getElementById('client-status')) {
+            document.getElementById('client-status').innerText = `ROUND ${snap.val()}`;
+            
+            // Wake phone up, clear old UI
+            document.getElementById('client-locked-screen').classList.add('hidden');
+            document.getElementById('client-mc-inputs').classList.add('hidden');
+            
+            // Only show text boxes if the active game is Song Trivia!
+            if (window.activeCartridge && window.activeCartridge.manifest.id === 'song_trivia') {
+                document.getElementById('client-text-inputs').classList.remove('hidden');
+            }
+            
+            // Wipe old answers from the screen
+            if(document.getElementById('client-guess-artist')) document.getElementById('client-guess-artist').value = '';
+            if(document.getElementById('client-guess-song')) document.getElementById('client-guess-song').value = '';
+            if(document.getElementById('client-guess-movie')) document.getElementById('client-guess-movie').value = '';
+
+            // Reset Firebase status so the TV knows you are ready
+            db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({ status: 'guessing', guess: null });
+        }
+    });
+
+    // Sync Timer
     db.ref(`rooms/${state.roomCode}/timeLeft`).on('value', snap => {
         if(snap.exists() && document.getElementById('client-timer-display')) document.getElementById('client-timer-display').innerText = snap.val();
     });
 
-    // --- PASTE THIS NEW BLOCK RIGHT HERE ---
+    // Sync Math Target Prompts
     db.ref(`rooms/${state.roomCode}/currentPrompt`).on('value', snap => {
         const promptDiv = document.getElementById('client-prompt');
         if (snap.exists() && promptDiv) {
@@ -178,11 +181,6 @@ export async function joinRoom() {
         } else if (promptDiv) {
             promptDiv.classList.add('hidden');
         }
-    });
-    // ---------------------------------------
-
-    db.ref(`rooms/${state.roomCode}/currentRound`).on('value', snap => {
-        if(snap.exists() && document.getElementById('client-status')) document.getElementById('client-status').innerText = `ROUND ${snap.val()}`;
     });
 }
 
