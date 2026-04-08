@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Yardbird's Song Trivia</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <link rel="icon" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Yardbird">
+    <meta name="theme-color" content="#0a0a0c">
+
+    <style>
+        :root { 
+            --p1: #39ff14; --p2: #00f2ff; --p3: #ff00e1; --p4: #ffff00;
+            --brand: #a855f7; --brand-glow: rgba(168, 85, 247, 0.4);
+            --bg: #0a0a0c; --card: #16161a; --surface: #25252b;
+            --border: #3f3f4a; --text-muted: #888; --highlight: #ffffff;
+            --success: #2ecc71; --fail: #e74c3c; --active-vis: #fff;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; display: flex; justify-content: center; min-height: 100vh; padding: 10px; }
+        
+        .container { background: var(--card); padding: 1.5rem; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align: center; border: 1px solid var(--border); width: 100%; max-width: 600px; margin-bottom: 20px; align-self: flex-start; }
+
+        /* HEADER */
+        #game-header { position: relative; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; min-height: 40px; }
+        .header-btn { position: absolute; width: 32px; height: 32px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); color: #aaa; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding-bottom: 2px; }
+        .header-btn:hover { border-color: var(--highlight); color: var(--highlight); transform: scale(1.1); }
+        #info-btn { right: 40px; }
+        #stats-btn { right: 0; font-size: 0.9rem; } 
+        #main-title { margin: 0; color: #fff; font-size: 1.4rem; line-height: 1.2; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; padding: 0 80px 0 45px; text-align: center; }
+
+        .section-label { display: block; text-align: left; font-size: 0.75rem; color: var(--text-muted); margin: 25px 0 10px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+
+        /* BUTTONS */
+        .btn { cursor: pointer; border: none; border-radius: 12px; font-weight: 800; text-transform: uppercase; transition: 0.2s; padding: 18px; width: 100%; font-size: 1.1rem; }
+        .btn-daily { background: var(--brand); color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4); margin-bottom: 5px; }
+        .btn-daily:hover { box-shadow: 0 0 15px var(--brand-glow); transform: scale(1.02); }
+        .btn-main { background: var(--highlight); color: black; font-size: 1.2rem; }
+        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        #start-multiplayer-btn:disabled { background: #333 !important; color: #666 !important; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-alt { background: var(--surface); color: #fff; border: 2px solid var(--border); font-size: 0.9rem; }
+        
+        .btn-reset { background: #333; color: #aaa; font-size: 0.8rem; padding: 10px; border: 1px solid #444; margin-top: 20px; width: auto; min-width: 120px; }
+        .btn-reset:hover { background: #444; color: #fff; }
+        
+        .separator-line { height: 2px; background: var(--brand); border-radius: 2px; margin: 25px 0; border: none; box-shadow: 0 0 10px var(--brand-glow); opacity: 0.7; }
+
+        /* TOUCH PILLS & CARDS */
+        .pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        
+        .pill { flex: 1; min-width: 60px; background: var(--surface); border: 2px solid var(--border); color: #ccc; padding: 12px; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.2s; user-select: none; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .pill.active { background: var(--highlight); border-color: var(--highlight); color: black; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .pill-wide { min-width: 140px; font-size: 0.9rem; padding: 12px 10px; }
+
+        .card-group { display: flex; flex-direction: column; gap: 10px; transition: opacity 0.3s; }
+        .select-card { background: var(--surface); border: 2px solid var(--border); border-radius: 14px; padding: 15px; cursor: pointer; text-align: left; transition: all 0.2s; position: relative; overflow: hidden; }
+        .select-card.active { border-color: var(--highlight); background: rgba(255, 255, 255, 0.05); }
+        .select-card.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--highlight); }
+        .card-title { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+        .card-desc { font-size: 0.8rem; color: #aaa; line-height: 1.3; }
+
+        input[type="text"] { background: var(--surface); border: 2px solid var(--border); color: white; padding: 15px; border-radius: 12px; font-size: 1rem; width: 100%; outline: none; margin-top: 10px; transition: border-color 0.3s; }
+        input[type="text"]:focus { border-color: var(--highlight); }
+        input[type="text"]::placeholder { color: #666; font-size: 0.85rem;}
+
+        /* PLAY SCREEN */
+        .player-tag { font-size: 1.2rem; font-weight: 800; padding: 12px; border-radius: 12px; margin-bottom: 10px; text-transform: uppercase; border: 2px solid transparent; transition: all 0.4s ease; }
+        .timer-display { font-size: 3.5rem; font-weight: 900; margin: 5px 0; font-family: 'Courier New', monospace; transition: color 0.3s; color: var(--highlight); }
+        
+        .score-bar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+        .score-pill { flex: 1; min-width: 65px; background: #1a1a24; border: 2px solid; border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; transition: all 0.3s; }
+        .score-pill .p-name { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+        .score-pill .p-pts { font-family: 'Courier New', monospace; font-size: 1.3rem; font-weight: 900; margin: 4px 0; transition: color 0.3s;}
+        .score-pill .p-streak { font-size: 0.65rem; font-weight: bold; }
+
+        .visualizer { display: flex; gap: 5px; justify-content: center; height: 25px; align-items: flex-end; margin-bottom: 5px; opacity: 0; transition: opacity 0.3s; }
+        .vis-bar { width: 8px; background: #fff; border-radius: 4px 4px 0 0; animation: bounce 0.5s infinite alternate; }
+        .vis-bar:nth-child(2) { animation-delay: 0.15s; }
+        .vis-bar:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes bounce { from { height: 5px; } to { height: 25px; } }
+        .visualizer.active { opacity: 1; }
+        .visualizer.active .vis-bar { background: var(--active-vis); }
+        .visualizer.paused .vis-bar { animation-play-state: paused; height: 5px; background: #555 !important; }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #feedback { margin: 15px 0; min-height: 60px; font-weight: 600; font-size: 1rem; line-height: 1.4; word-wrap: break-word; }
+        .cover-art { width: 150px; height: 150px; border-radius: 15px; margin: 0 auto 15px auto; display: none; border: 3px solid white; object-fit: cover; }
+        
+        .mc-btn { background: var(--surface); border: 2px solid var(--border); color: white; padding: 16px; border-radius: 10px; font-size: 1.05rem; font-weight: bold; width: 100%; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
+        .mc-btn:hover { background: #444; border-color: #666; }
+        .mc-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* PLAYLIST EXPORT */
+        .playlist-box { background: #0f0f13; border: 1px solid #333; border-radius: 12px; padding: 15px; text-align: left; margin-top: 20px; }
+        .playlist-box h4 { margin: 0 0 12px 0; color: #888; font-size: 0.8rem; text-transform: uppercase; text-align: center; }
+        .platform-toggles { display: flex; gap: 8px; margin-bottom: 5px; }
+        .plat-btn { flex: 1; background: var(--surface); border: 1px solid var(--border); color: #aaa; padding: 10px 5px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; font-weight: bold; text-transform: uppercase; transition: all 0.2s; }
+        .active-plat { background: var(--brand); color: #fff !important; border-color: #c084fc; box-shadow: 0 0 12px var(--brand-glow); }
+        .playlist-list-container { max-height: 200px; overflow-y: auto; padding-right: 5px; display: none; margin-top: 15px; }
+        .playlist-list { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; line-height: 1.8; }
+        .playlist-list a { color: #f8f9fa; text-decoration: none; display: flex; gap: 8px; border-bottom: 1px solid #2d2d35; padding: 10px 5px; transition: all 0.2s; font-weight: 500; }
+        .playlist-list a:hover { color: var(--brand); background: rgba(168, 85, 247, 0.05); padding-left: 10px; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--card); border: 1px solid var(--border); padding: 25px; border-radius: 20px; max-width: 500px; width: 100%; text-align: left; box-shadow: 0 10px 40px rgba(0,0,0,0.9); max-height: 90vh; overflow-y: auto; }
+        .modal-content h2 { color: var(--brand); margin-top: 0; text-align: center; border-bottom: 1px solid #333; padding-bottom: 15px;}
+        
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: var(--surface); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .stat-val { font-size: 1.5rem; font-weight: 900; color: #fff; margin-top: 5px; }
+        
+        .trophy-row { display: flex; align-items: center; background: #1a1a24; border: 1px solid #333; padding: 12px; border-radius: 12px; margin-bottom: 10px; transition: all 0.3s; }
+        .trophy-icon { font-size: 2rem; margin-right: 15px; filter: grayscale(100%) opacity(0.3); }
+        .trophy-text h4 { margin: 0 0 4px 0; color: #888; }
+        .trophy-text p { margin: 0; font-size: 0.8rem; color: #666; }
+        .trophy-row.unlocked { border-color: #ffcc00; background: rgba(255,204,0,0.05); }
+        .trophy-row.unlocked .trophy-icon { filter: none; }
+        .trophy-row.unlocked .trophy-text h4 { color: #ffcc00; }
+        .trophy-row.unlocked .trophy-text p { color: #ccc; }
+
+       @media (max-width: 768px) {
+            #game-header { padding: 0; justify-content: center; align-items: center; }
+            #main-title { font-size: 1.1rem; padding: 0 75px 0 45px; text-align: center; }
+            #info-btn { right: 40px; }
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="rules-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2>How to Play</h2>
+        <ul style="padding-left: 20px; font-size: 0.95rem; line-height: 1.6; color: #ccc;">
+            <li><strong>Modes:</strong> Play Classic Genre, Artist-Specific, or Guess the Movie!</li>
+            <li><strong>Today Three:</strong> A daily synced 3-round challenge spanning the 80s, 90s, and 2000s.</li>
+            <li><strong>The Lifeline (Easy/Medium):</strong> You have 20 seconds to type an answer. If you get stuck at 10 seconds, Multiple Choice options will automatically appear to save you. (Or press the button to force it early!)</li>
+            <li><strong>Epic Intros (Hard):</strong> Set the level to Hard to only get a 10-second snippet (No lifeline!).</li>
+            <li><strong>1000 Point Ceiling:</strong> Scores are mathematically normalized to a perfect 1000, no matter how many rounds you play.</li>
+        </ul>
+        <button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it! Let's Play</button>
+        <div style="text-align:center; color:#555; margin-top:20px; font-size:0.8rem; line-height: 1.4;">
+            <strong>Yardbird's Song Trivia v7.0 Master Edition</strong><br>
+            Developed by Karthik Raja, 2026
+        </div>
+    </div>
+</div>
+
+<div id="stats-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2>Lifetime Locker Room</h2>
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Games Played</div>
+                <div class="stat-val" id="stat-games">0</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Accuracy</div>
+                <div class="stat-val" id="stat-acc" style="color:var(--brand)">0%</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">High Score</div>
+                <div class="stat-val" id="stat-hs-text" style="color:var(--p1)">0</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Sniper Hits</div>
+                <div class="stat-val" id="stat-snip" style="color:var(--p3)">0</div>
+            </div>
+        </div>
+
+        <h3 style="color:#fff; font-size:1rem; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:15px;">Trophy Cabinet</h3>
+        
+        <div class="trophy-row" id="trophy-perf">
+            <div class="trophy-icon">🏆</div>
+            <div class="trophy-text"><h4>The Perfectionist</h4><p>Score higher than 900/1000 points.</p></div>
+        </div>
+        <div class="trophy-row" id="trophy-mara">
+            <div class="trophy-icon">🏃</div>
+            <div class="trophy-text"><h4>The Marathoner</h4><p>Complete a grueling 20-Round game.</p></div>
+        </div>
+        <div class="trophy-row" id="trophy-snip">
+            <div class="trophy-icon">🎯</div>
+            <div class="trophy-text"><h4>The Sniper</h4><p>Guess 10 songs correctly in under 3 seconds.</p></div>
+        </div>
+        <div class="trophy-row" id="trophy-streak">
+            <div class="trophy-icon">🔥</div>
+            <div class="trophy-text"><h4>The Daily Devotee</h4><p>Play Yardbird 5 days in a row.</p></div>
+        </div>
+        <div class="trophy-row" id="trophy-expl">
+            <div class="trophy-icon">🗺️</div>
+            <div class="trophy-text"><h4>The Explorer</h4><p>Play all 3 game modes (Genre, Artist, Movie).</p></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+            <button class="btn btn-main" onclick="hideModal('stats-modal')" style="flex: 1; margin-right: 10px;">Close</button>
+            <button class="btn btn-reset" onclick="resetStats()" style="margin-top: 0; padding: 16px;">Reset Stats</button>
+        </div>
+    </div>
+</div>
+
+<div id="multiplayer-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="text-align: center;">
+        <h2 style="margin-bottom: 25px;">Party Mode</h2>
+        
+        <button class="btn btn-daily" onclick="handleHostSetup()">📺 HOST A GAME (TV/Laptop)</button>
+        <div style="font-size:0.75rem; color:#aaa; margin: 10px 0 25px 0; text-transform:uppercase; font-weight:bold;">Control the music and display the board</div>
+        
+        <button class="btn btn-main" onclick="handleJoinScreen()">📱 JOIN A GAME (Phone)</button>
+        <div style="font-size:0.75rem; color:#aaa; margin: 10px 0 25px 0; text-transform:uppercase; font-weight:bold;">Use your phone as a Kahoot-style controller</div>
+        
+        <hr class="separator-line">
+        
+        <button class="btn btn-alt" onclick="hideModal('multiplayer-modal')">▶ BACK TO SOLO</button>
+    </div>
+</div>
+
+<div class="game-wrapper">
+    <div class="container">
+        
+        <div id="game-header">
+            <button onclick="showModal('multiplayer-modal')" class="header-btn" id="menu-btn" style="left: 0; font-size: 1.2rem; padding-bottom: 4px;">☰</button>
+            
+            <h1 id="main-title">YARDBIRD'S SONG TRIVIA</h1>
+            <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn">i</button>
+            <button onclick="showModal('stats-modal')" class="header-btn" id="stats-btn">📊</button>
+        </div>
+
+        <div id="join-screen" class="hidden">
+            <h2 style="color:var(--highlight); margin-top:0;">Join Party</h2>
+            <input type="text" id="join-code" placeholder="4-LETTER CODE" style="text-transform:uppercase; text-align:center; font-size:1.5rem; letter-spacing:5px;" maxlength="4" autocomplete="off">
+            <input type="text" id="join-name" placeholder="Your Nickname" style="text-align:center; font-size:1.2rem; margin-top:15px;" maxlength="12" autocomplete="off">
+            <button class="btn btn-main" style="margin-top:20px;" onclick="joinRoom()">JOIN ROOM</button>
+            <button class="btn btn-reset" onclick="location.reload()">Back</button>
+            <div id="join-feedback" style="color:var(--fail); margin-top:15px; font-weight:bold;"></div>
+        </div>
+
+        <div id="host-lobby-screen" class="hidden">
+            <h2 style="color:var(--highlight); margin-top:0;">Waiting for players...</h2>
+            <div style="font-size:1.1rem; color:#aaa; margin-bottom:10px;">Join at <span style="color:#fff; font-weight:bold;">yardbirdgames.com</span></div>
+            <div style="font-size:0.9rem; color:#888; text-transform:uppercase;">Room Code:</div>
+            <div id="display-room-code" style="font-size:4rem; font-weight:900; color:var(--brand); letter-spacing:8px; margin:10px 0; font-family:'Courier New', monospace;">----</div>
+            
+            <div style="margin-bottom: 20px;">
+                <div id="qr-container" style="background: white; padding: 15px; border-radius: 12px; display: inline-block; box-shadow: 0 5px 15px rgba(0,0,0,0.5);"></div>
+                <div style="font-size: 0.8rem; color: #aaa; margin-top: 10px; text-transform: uppercase; font-weight: bold;">Scan to Auto-Join</div>
+            </div>
+            
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:15px; min-height:100px; margin-bottom:20px;">
+                <div style="font-size:0.8rem; color:#888; text-transform:uppercase; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">Players Connected (<span id="player-count">0</span>)</div>
+                <div id="lobby-player-list" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+                </div>
+            </div>
+            
+            <button class="btn btn-main" id="start-multiplayer-btn" onclick="startMultiplayerGame()" disabled>Start Game</button>
+            <button class="btn btn-reset" onclick="cancelLobby()">Cancel</button>
+        </div>
+
+        <div id="client-play-screen" class="hidden" style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
+            <div id="client-status" style="font-size: 1.2rem; font-weight: bold; color: var(--brand); margin-bottom: 20px;">ROUND 1</div>
+            
+            <div id="client-timer-display" style="font-size: 4rem; color: var(--highlight); font-family: 'Courier New', monospace; font-weight: 900; margin-bottom: 5px;">30</div>
+            <div id="client-grace-msg" class="hidden" style="color:var(--p4); font-size:0.9rem; font-weight:bold; margin-bottom:15px; text-transform: uppercase;">🎵 Audio Ended. 30s Grace Period.</div>
+            <div id="client-text-inputs">
+                <input type="text" id="client-guess-artist" placeholder="Artist Name..." autocomplete="off">
+                <input type="text" id="client-guess-song" placeholder="Song Title..." autocomplete="off">
+                <input type="text" id="client-guess-movie" placeholder="Movie Name..." class="hidden" autocomplete="off">
+                
+                <button class="btn btn-main" style="margin-top: 15px;" onclick="submitClientTextGuess()">SUBMIT GUESS</button>
+                <button class="btn btn-alt" style="margin-top: 10px;" onclick="requestClientLifeline()">MULTIPLE CHOICE</button>
+            </div>
+
+            <div id="client-mc-inputs" class="hidden">
+                </div>
+
+            <div id="client-locked-screen" class="hidden" style="padding: 30px 10px;">
+                <h2 style="color:var(--success);">Answer Locked!</h2>
+                <p style="font-size: 1.1rem; color: #ccc;">Look at the big screen.</p>
+            </div>
+        </div>
+              
+        
+        <div id="client-end-screen" class="hidden" style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center; padding: 40px 10px;">
+            <h2 style="color:var(--brand); font-size: 2.5rem; margin-bottom: 5px;">Game Over!</h2>
+            <div style="font-size: 1.1rem; color: #ccc; margin-bottom: 25px;">Look at the big screen for the final podium!</div>
+            
+            <div style="background: var(--surface); border: 2px solid var(--border); padding: 25px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <div style="font-size: 0.9rem; color: #888; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Your Final Score</div>
+                <div id="client-final-score" style="font-size: 4.5rem; font-weight: 900; color: var(--highlight); font-family: 'Courier New', monospace; margin-top: 5px;">0</div>
+            </div>
+
+            <button class="btn btn-main" onclick="location.reload()">Return to Main Menu</button>
+        </div>
+
+        <div id="setup-screen">
+            <div>
+                <button class="btn btn-daily" id="daily-btn-top" onclick="startDailyChallenge()">🌍 PLAY TODAY THREE</button>
+                <div style="font-size:0.75rem; color:#aaa; text-transform:uppercase; margin-top:5px; font-weight: bold;">The Daily Global Synced Challenge</div>
+            </div>
+
+            <hr class="separator-line">
+            
+            <button class="btn btn-main" id="start-btn-top" style="margin-bottom: 10px;" onclick="startGame()">▶ PLAY CUSTOM GAME</button>
+
+            <label class="section-label">1. Select Game Mode</label>
+            <div class="card-group" id="mode-group">
+                <div class="select-card active" onclick="setMode('genre', this)">
+                    <div class="card-title">🎵 Guess the Artist & Song</div>
+                    <div class="card-desc">Play by Era, Decade, or specific Genre.</div>
+                </div>
+                <div class="select-card" onclick="setMode('artist', this)">
+                    <div class="card-title">🎤 Guess the Song</div>
+                    <div class="card-desc">Focus strictly on a single Artist's catalog.</div>
+                </div>
+                <div class="select-card" onclick="setMode('movie', this)">
+                    <div class="card-title">🎬 Guess the Movie</div>
+                    <div class="card-desc">Identify the film from its original soundtrack.</div>
+                </div>
+            </div>
+
+            <div id="sub-selection-area">
+                <label class="section-label" id="sub-label">Select Era / Genre</label>
+                <div class="pill-group" id="sub-pills"></div>
+            </div>
+            
+            <input type="text" id="custom-input" class="hidden" placeholder="Separate multiple entries with a comma (e.g., Nirvana, 90s)">
+
+            <div style="display: flex; gap: 15px; margin-top: 5px;">
+                <div style="flex:1;">
+                    <label class="section-label">Players</label>
+                    <div class="pill-grid" id="players-group">
+                        <div class="pill active" onclick="setPill('players-group', this, 1)">1</div>
+                        <div class="pill" onclick="setPill('players-group', this, 2)">2</div>
+                        <div class="pill" onclick="setPill('players-group', this, 3)">3</div>
+                        <div class="pill" onclick="setPill('players-group', this, 4)">4</div>
+                    </div>
+                </div>
+                <div style="flex:1;">
+                    <label class="section-label">Rounds</label>
+                    <div class="pill-grid" id="rounds-group">
+                        <div class="pill" onclick="setPill('rounds-group', this, 5)">5</div>
+                        <div class="pill active" onclick="setPill('rounds-group', this, 10)">10</div>
+                        <div class="pill" onclick="setPill('rounds-group', this, 15)">15</div>
+                        <div class="pill" onclick="setPill('rounds-group', this, 20)">20</div>
+                    </div>
+                </div>
+            </div>
+
+            <label class="section-label">2. Select Difficulty</label>
+            <div class="card-group" id="level-group" style="margin-bottom: 20px;">
+                <div id="lvl-easy" class="select-card active" onclick="setLevel('easy', this)">
+                    <div class="card-title">🟢 Easy (Top Hits)</div>
+                    <div class="card-desc">30 seconds. Plays the biggest iconic hits. Multiple Choice Lifeline drops in at 10s.</div>
+                </div>
+                <div id="lvl-medium" class="select-card" onclick="setLevel('medium', this)">
+                    <div class="card-title">🟡 Medium (Deep Catalog)</div>
+                    <div class="card-desc">30 seconds. Pulls from all available songs, including B-sides. Lifeline enabled.</div>
+                </div>
+                <div id="lvl-hard" class="select-card" onclick="setLevel('hard', this)">
+                    <div class="card-title">🔴 Hard (The 10s Sprint)</div>
+                    <div class="card-desc">Brutal 10-second audio cutoff. Full catalog. Pure recall typing. <strong>No Lifeline.</strong></div>
+                </div>
+            </div>
+            
+            <div id="feedback-setup" style="margin-top:15px; color:var(--brand); font-weight:bold;"></div>
+            <button class="btn btn-reset hidden" id="cancel-setup-btn" onclick="location.reload()" style="margin-top: 20px;">Cancel Multiplayer</button>
+        </div>
+
+        <div id="play-screen" class="hidden">
+            <div id="score-board" class="score-bar"></div>
+            
+            <div id="active-player" class="player-tag">Player 1 Turn</div>
+            
+            <div id="visualizer" class="visualizer hidden">
+                <div class="vis-bar"></div>
+                <div class="vis-bar"></div>
+                <div class="vis-bar"></div>
+            </div>
+            <div id="timer" class="timer-display">Load...</div>
+            
+            <div id="feedback"></div>
+            <img id="reveal-art" class="cover-art" src="" alt="Album Art">
+            
+            <div style="display:flex; gap:10px; margin-bottom:10px; width:100%;" id="btn-container">
+                <button id="stop-btn" class="btn btn-main" style="flex:2;" onclick="handleStop()">STOP & GUESS</button>
+                <button id="force-mc-btn" class="btn btn-alt" style="flex:1; margin-bottom:0;" onclick="forceLifeline()">MULTIPLE CHOICE</button>
+            </div>
+            
+            <div id="guess-fields" class="hidden">
+                <input type="text" id="guess-artist" placeholder="Artist Name..." autocomplete="off">
+                <input type="text" id="guess-song" placeholder="Song Title..." autocomplete="off">
+                <input type="text" id="guess-movie" placeholder="Movie Name..." class="hidden" autocomplete="off">
+                <button class="btn btn-main" id="submit-btn" style="margin-top:0;" onclick="evaluateGuess()">Submit Answers</button>
+            </div>
+
+            <div id="mc-fields" class="hidden"></div>
+
+            <button class="btn btn-reset" onclick="cancelActiveGame()">End Game / Leave Room</button>
+        </div>
+
+        <div id="final-screen" class="hidden">
+            <h2 id="congrats-text" style="font-size:1.6rem; color:#fff; margin-bottom: 5px;">Game Finished!</h2>
+            <div style="color:var(--brand); font-size:0.8rem; font-weight:bold; margin-bottom:15px; text-transform:uppercase;">Scores Normalized to 1000</div>
+            
+            <p id="winner-text" style="font-size: 1.25rem; font-weight: 900; margin-bottom: 10px;"></p>
+            <div id="new-record-msg" style="color:var(--p1); font-weight:bold; margin-bottom:10px; display:none;">🎉 NEW ALL-TIME RECORD! 🎉</div>
+            
+            <div id="final-grid" style="margin-bottom: 20px;"></div>
+
+            <button class="btn btn-main" style="margin-bottom:20px;" onclick="shareChallenge()">⚔️ CHALLENGE A FRIEND</button>
+            
+            <div class="playlist-box">
+                <h4>Open Playlist In:</h4>
+                <div class="platform-toggles">
+                    <button id="plat-apple" class="plat-btn" onclick="renderPlaylist('apple')">Apple Music</button>
+                    <button id="plat-spotify" class="plat-btn" onclick="renderPlaylist('spotify')">Spotify</button>
+                    <button id="plat-youtube" class="plat-btn" onclick="renderPlaylist('youtube')">YouTube</button>
+                </div>
+                <div class="playlist-list-container" id="playlist-list-container">
+                    <ul id="playlist-list" class="playlist-list"></ul>
+                </div>
+            </div>
+
+            <button class="btn btn-main" style="margin-top:20px;" onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
