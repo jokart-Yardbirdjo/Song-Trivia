@@ -617,26 +617,15 @@ function getMCLabel(s) {
 }
 
 function setupMC() {
-    const correctStr = getMCLabel(state.songs[state.curIdx]);
-    let wrongOptionsPool = [];
-    state.globalPool.forEach(s => {
-        let str = getMCLabel(s);
-        if (str !== correctStr && str !== "Unknown Movie" && str !== "Unknown") wrongOptionsPool.push(str);
-    });
-    wrongOptionsPool = [...new Set(wrongOptionsPool)].sort(() => 0.5 - Math.random());
-    let finalWrongStrs = wrongOptionsPool.slice(0, 3);
-    let options = [{ str: correctStr, correct: true }];
-    finalWrongStrs.forEach(str => { options.push({ str: str, correct: false }); });
-    options = options.sort(() => 0.5 - Math.random()); 
     const container = document.getElementById('mc-fields'); container.innerHTML = ''; 
-    options.forEach(opt => {
+    state.currentMCOptions.forEach(opt => {
         const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt.str;
         btn.onclick = () => evaluateGuess(opt.correct); container.appendChild(btn);
     });
 
     if (state.isMultiplayer && state.isHost) {
-        let fbOptions = options.map(opt => ({ str: opt.str, isCorrect: opt.correct }));
-        db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions);
+        let fbOptions = state.currentMCOptions.map(opt => ({ str: opt.str, isCorrect: opt.correct }));
+        db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions); // Force it to all phones
     }
 }
 
