@@ -22,6 +22,10 @@ window.evaluateGuess = evaluateGuess; window.resetStats = resetStats;
 window.shareChallenge = shareChallenge;
 
 window.onload = () => {
+    // ---- NEW LINE HERE ----
+    // Let's test the Math manifest! (Change to SongTrivia to test the other one)
+    buildSetupScreen(FastMath.manifest); 
+    //
     renderSubPills();
     const todayStr = new Date().toDateString();
     if (state.userStats.lastPlayedDate !== todayStr && state.userStats.lastPlayedDate !== null) {
