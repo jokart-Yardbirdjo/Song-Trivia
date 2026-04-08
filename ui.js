@@ -166,6 +166,10 @@ export function buildSetupScreen(manifest) {
 }
 
 export function updatePlatformUI(context) {
+    // 1. Toggle the hamburger menu based on where we are
+    const menuBtn = document.getElementById('menu-btn');
+    if (menuBtn) menuBtn.classList.toggle('hidden', context === 'main_menu');
+    
     const rulesContent = document.querySelector('#rules-modal .modal-content');
     const statsContent = document.querySelector('#stats-modal .modal-content');
     
