@@ -56,7 +56,7 @@ window.onload = () => {
     const todayStr = new Date().toDateString();
     if (state.userStats.song_trivia && state.userStats.song_trivia.lastPlayedDate !== todayStr && state.userStats.song_trivia.lastPlayedDate !== null) {
         state.userStats.song_trivia.playedDailyToday = false;
-        localStorage.setItem('yardbirdStatsV6', JSON.stringify(state.userStats.song_trivia));
+        localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
     }
     
     setupDailyButton();
