@@ -60,20 +60,23 @@ function nextRound() {
     const tag = document.getElementById('active-player');
 
     if (state.isMultiplayer && state.isHost) {
-        // TV SCREEN
-        document.getElementById('score-board').innerHTML = ''; // Hide scores during play
+        // --- TV SCREEN ---
+        document.getElementById('score-board').innerHTML = ''; 
         tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}`;
-        tag.style.color = "var(--highlight)";
-        tag.style.borderColor = "var(--highlight)";
+        tag.style.color = "var(--highlight)"; tag.style.borderColor = "var(--highlight)";
         
-        document.getElementById('timer').innerText = `Target: ${problem.target}`;
-        document.getElementById('timer').style.color = 'var(--highlight)';
-        
-        document.getElementById('feedback').innerHTML = `<div id="host-lock-status" style="color:var(--brand); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>`;
-        
-        // Push the generated equations to the connected phones
+        // Put the target front and center in the feedback box
+        document.getElementById('feedback').innerHTML = `
+            <div style="font-size:3.5rem; font-weight:900; color:#fff; margin-bottom:15px; letter-spacing: 2px;">Target: ${problem.target}</div>
+            <div id="host-lock-status" style="color:var(--brand); font-size:1.3rem; font-weight:bold;">LOCKED IN: 0 / ${state.numPlayers}</div>
+        `;
+
+        // Push the MC options to the phone
         let fbOptions = problem.options.map(opt => ({ str: opt.text, isCorrect: opt.isCorrect }));
         db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions);
+        
+        // NEW: Push the Target Number to the phone!
+        db.ref(`rooms/${state.roomCode}/currentPrompt`).set(`Target: ${problem.target}`);
         
         // Reset player statuses
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
@@ -85,30 +88,38 @@ function nextRound() {
         });
 
     } else {
-        // SOLO SCREEN
+        // --- SOLO SCREEN ---
         tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}`;
-        tag.style.color = colors[0];
-        tag.style.borderColor = colors[0];
-        document.getElementById('timer').innerText = `Target: ${problem.target}`;
+        tag.style.color = colors[0]; tag.style.borderColor = colors[0];
+        
+        // Put the target front and center
+        document.getElementById('feedback').innerHTML = `<div style="font-size:3rem; font-weight:900; color:#fff; margin-bottom:15px;">Target: ${problem.target}</div>`;
         
         const mcContainer = document.getElementById('mc-fields');
-        mcContainer.innerHTML = '';
-        mcContainer.classList.remove('hidden');
+        mcContainer.innerHTML = ''; mcContainer.classList.remove('hidden');
         problem.options.forEach(opt => {
-            const btn = document.createElement('button');
-            btn.className = 'mc-btn'; btn.innerText = opt.text;
+            const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt.text;
             btn.onclick = () => evaluateGuess(opt.isCorrect); 
             mcContainer.appendChild(btn);
         });
-        document.getElementById('feedback').innerHTML = `<div style="font-size:1.5rem; color:#aaa;">Time Left: ${state.timeLimit}s</div>`;
     }
 
-    // Start Clock
+    // --- UNIVERSAL CLOCK LOGIC ---
     state.timeLeft = state.timeLimit;
+    
+    // Reset the giant timer display for both Solo and Host modes
+    document.getElementById('timer').innerText = state.timeLeft;
+    document.getElementById('timer').style.color = 'var(--highlight)';
+
     state.timerId = setInterval(() => {
         state.timeLeft--;
-        if (state.isMultiplayer && state.isHost) db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
-        if (!state.isMultiplayer) document.getElementById('feedback').innerHTML = `<div style="font-size:1.5rem; color:#aaa;">Time Left: ${state.timeLeft}s</div>`;
+        
+        // Always update the giant timer!
+        document.getElementById('timer').innerText = state.timeLeft;
+
+        if (state.isMultiplayer && state.isHost) {
+            db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
+        }
         
         if (state.timeLeft <= 3) sfxTick.play().catch(()=>{});
 
@@ -122,7 +133,6 @@ function nextRound() {
         }
     }, 1000);
 }
-
 export function evaluateGuess(isCorrect) {
     if (state.isProcessing) return;
     state.isProcessing = true;
