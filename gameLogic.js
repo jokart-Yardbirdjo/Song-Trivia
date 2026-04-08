@@ -3,6 +3,23 @@ import { db } from './firebase.js';
 import { state, audio, sfxTick, sfxCheer, sfxBuzzer, colors, top20DisneyMovies, top20BollywoodMovies, top20TamilMovies, top20HollywoodMovies, shweArtistsFull, oneHitWondersFull } from './state.js';
 import { populateStats } from './ui.js';
 
+export const manifest = {
+    id: "song_trivia",
+    title: "SONG TRIVIA",
+    subtitle: "Yardbird's Original Masterpiece",
+    modes: [
+        { id: "genre", title: "🎵 Guess the Artist & Song", desc: "Play by Era, Decade, or specific Genre." },
+        { id: "artist", title: "🎤 Guess the Song", desc: "Focus strictly on a single Artist's catalog." },
+        { id: "movie", title: "🎬 Guess the Movie", desc: "Identify the film from its original soundtrack." }
+    ],
+    levels: [
+        { id: "easy", title: "🟢 Easy (Top Hits)", desc: "30s. Iconic hits. Lifeline at 10s." },
+        { id: "medium", title: "🟡 Medium (Deep Catalog)", desc: "30s. All songs, including B-sides. Lifeline enabled." },
+        { id: "hard", title: "🔴 Hard (The 10s Sprint)", desc: "10s cutoff. Pure recall typing. No Lifeline." }
+    ],
+    clientUI: "typing-and-mc" // Tells the phone to show text boxes initially
+};
+
 function saveStats() {
     localStorage.setItem('yardbirdStatsV6', JSON.stringify(state.userStats));
     populateStats();
