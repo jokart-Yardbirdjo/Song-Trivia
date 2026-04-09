@@ -140,6 +140,58 @@
             #info-btn { right: 40px; }
         }
         .hidden { display: none !important; }
+
+        /* =========================================
+           ✨ THE PREMIUM POLISH PACK ✨
+           ========================================= */
+
+        /* 1. Native App Lock (Stops blue highlighting & double-tap zooms) */
+        body {
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Ensure text boxes still work normally! */
+        input {
+            -webkit-user-select: auto;
+            user-select: auto; 
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* 2. Neon Input Glows */
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(187, 134, 252, 0.4); /* Brand purple glow */
+            border-color: var(--brand);
+        }
+
+        /* 3. Tactile Button Physics */
+        .btn, .mc-btn, .game-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        }
+        .btn:hover, .game-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            filter: brightness(1.1);
+        }
+        .btn:active, .mc-btn:active, .game-card:active {
+            transform: translateY(2px) !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.6) !important;
+            filter: brightness(0.9);
+        }
+
+        /* 4. Cinematic Screen Swaps */
+        #setup-screen, #play-screen, #final-screen, #main-menu-screen, #client-play-screen, #client-wait-screen {
+            animation: smoothReveal 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        
+        @keyframes smoothReveal {
+            0% { opacity: 0; transform: translateY(15px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
     </style>
 </head>
 <body>
