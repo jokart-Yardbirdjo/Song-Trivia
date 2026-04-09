@@ -136,6 +136,7 @@ function nextRound() {
         }
     }, 1000);
 }
+
 export function evaluateGuess(isCorrect) {
     if (state.isProcessing) return;
     state.isProcessing = true;
@@ -146,8 +147,11 @@ export function evaluateGuess(isCorrect) {
 
     if (isCorrect) {
         state.streaks[0]++;
-        roundPts = Math.max(10, state.timeLeft * 10); 
-        if (state.streaks[0] % 3 === 0) roundPts += 50;
+        
+        // NEW FIX: 0 seconds = 0 points. Time left * 10.
+        roundPts = state.timeLeft * 10; 
+        if (state.streaks[0] > 0 && state.streaks[0] % 3 === 0) roundPts += 50;
+        
         state.rawScores[0] += roundPts;
         sfxCheer.currentTime = 0; sfxCheer.play().catch(()=>{});
         document.getElementById('feedback').innerHTML = `<div style="color:var(--success); font-size:1.5rem; font-weight:bold;">✅ CORRECT! +${roundPts}</div>`;
@@ -176,8 +180,11 @@ export function evaluateMultiplayerRound(players) {
 
         if (correct) {
             state.streaks[index]++;
-            roundPts = Math.max(10, p.guess.time * 10);
-            if (state.streaks[index] % 3 === 0) roundPts += 50; 
+            
+            // NEW FIX: 0 seconds = 0 points. Phone's recorded time * 10.
+            roundPts = p.guess.time * 10;
+            if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundPts += 50; 
+            
             state.rawScores[index] += roundPts;
             fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
         } else {
@@ -188,8 +195,6 @@ export function evaluateMultiplayerRound(players) {
 
     fbHTML += `</div>`;
     document.getElementById('feedback').innerHTML = fbHTML; 
-
-    // Note: The scoreboard drawing block was cleanly removed from here!
 
     state.curIdx++; 
     setTimeout(nextRound, 4000); 
