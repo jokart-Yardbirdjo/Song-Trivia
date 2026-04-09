@@ -7,7 +7,10 @@ export const manifest = {
     title: "FAST MATH",
     subtitle: "Quick-fire arithmetic battles",
     modes: [ { id: "addition", title: "➕ Addition", desc: "Classic 2-digit sums." } ],
-    levels: [ { id: "easy", title: "🟢 Easy", desc: "10 seconds to answer." } ],
+    levels: [ 
+        { id: "easy", title: "🟢 Easy", desc: "20s. Incorrect answer disappears at 10s." },
+        { id: "hard", title: "🔴 Hard", desc: "10s. Pure speed. No help." }
+    ],
     clientUI: "multiple-choice" 
 };
 
@@ -35,7 +38,8 @@ export function startGame() {
     state.isDailyMode = false;
     // Use Lobby count if multiplayer, otherwise force 1
     state.numPlayers = state.isMultiplayer ? state.numPlayers : 1; 
-    state.timeLimit = 10; 
+    // NEW FIX: Set time based on difficulty!
+    state.timeLimit = state.gameState.level === 'easy' ? 20 : 10;
     state.maxRounds = 5;  
     state.curIdx = 0;
     state.rawScores = new Array(state.numPlayers).fill(0);
@@ -123,6 +127,36 @@ function nextRound() {
         if (state.isMultiplayer && state.isHost) {
             db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
         }
+
+        // -------------------------------------------------------------
+        // NEW FEATURE: 50/50 Lifeline at 10 Seconds!
+        if (state.gameState.level === 'easy' && state.timeLeft === 10) {
+            
+            if (state.isMultiplayer && state.isHost) {
+                // MULTIPLAYER: Re-filter the array to remove 1 wrong answer, then push to Firebase
+                let removed = false;
+                let newOptions = problem.options.filter(opt => {
+                    if (!opt.isCorrect && !removed) { removed = true; return false; }
+                    return true;
+                });
+                // The phones will instantly rebuild their UI when this hits the database!
+                let fbOptions = newOptions.map(opt => ({ str: opt.text, isCorrect: opt.isCorrect }));
+                db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions);
+                
+            } else if (!state.isMultiplayer) {
+                // SOLO: Find one wrong button on the screen and fade it out
+                let removed = false;
+                document.querySelectorAll('#mc-fields .mc-btn').forEach(btn => {
+                    let opt = problem.options.find(o => o.text === btn.innerText);
+                    if (opt && !opt.isCorrect && !removed) {
+                        btn.style.opacity = '0';
+                        btn.style.pointerEvents = 'none';
+                        removed = true;
+                    }
+                });
+            }
+        }
+        // -------------------------------------------------------------
         
         if (state.timeLeft <= 3) sfxTick.play().catch(()=>{});
 
