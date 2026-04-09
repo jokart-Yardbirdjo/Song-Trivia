@@ -191,6 +191,64 @@
             0% { opacity: 0; transform: translateY(15px) scale(0.98); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+    /* =========================================
+           ✨ THE MODERN PREMIUM PACK ✨
+           ========================================= */
+
+        /* 1. App-Like Lock & Smooth Scrolling */
+        body {
+            -webkit-user-select: none; user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            background-color: #121212; /* Deep, flat premium dark mode */
+        }
+        input { -webkit-user-select: auto; user-select: auto; }
+
+        /* 2. Classy, Minimalist Header */
+        .header-container { 
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; 
+        }
+        .header-title { 
+            font-size: 1.6rem; font-weight: 800; margin: 0; text-align: left; 
+            letter-spacing: 3px; color: #ffffff; opacity: 0.95;
+        }
+
+        /* 3. Matte "Floating" Game Cards */
+        .game-card {
+            background: #1e1e1e !important; /* Flat matte dark grey */
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+            border-radius: 20px !important;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        }
+        
+        /* Buttery Smooth Hover/Click Physics */
+        .game-card:hover {
+            transform: translateY(-4px) !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        .game-card:active {
+            transform: translateY(2px) scale(0.98) !important;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* 4. Elegant Inputs (No Neon) */
+        input:focus {
+            outline: none;
+            border-color: #ffffff; /* Crisp white border instead of neon glow */
+            box-shadow: 0 0 0 1px #ffffff; 
+            background: #2a2a2a;
+        }
+
+        /* 5. Clean Screen Fades */
+        #setup-screen, #play-screen, #final-screen, #main-menu-screen, #client-play-screen, #client-wait-screen {
+            animation: modernFade 0.3s ease-out;
+        }
+        
+        @keyframes modernFade {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
         
     </style>
 </head>
@@ -485,6 +543,31 @@
     </div>
 </div>
 
+<div id="stats-modal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; justify-content:center; align-items:center;">
+        <div style="background:var(--card); padding:2rem; border-radius:16px; border:1px solid var(--brand); width:90%; max-width:400px; text-align:center;">
+            <h2 style="color:var(--brand); margin-top:0;">LIFETIME STATS</h2>
+            <div id="stats-content" style="color:#fff; font-size:1.1rem; line-height:1.8; text-align:left; margin:20px 0;">
+                </div>
+            <button class="btn" onclick="document.getElementById('stats-modal').classList.add('hidden')" style="width:100%;">CLOSE</button>
+        </div>
+</div>
+    
 <script type="module" src="app.js"></script>
+
+<script>
+    function playCartridgeAnimation(element, gameId) {
+        // Lock the card in the "pressed down" state
+        element.classList.add('cartridge-loading');
+        
+        // Wait 350 milliseconds so the user feels the physical click, then load the game
+        setTimeout(() => {
+            element.classList.remove('cartridge-loading');
+            
+            // NOTE: Change 'selectGame' to whatever your actual loading function is called!
+            if(window.selectGame) window.selectGame(gameId); 
+        }, 350);
+    }
+</script> 
+    
 </body>
 </html>
