@@ -245,37 +245,47 @@ export function openStatsLocker() {
 }
 window.openStatsLocker = openStatsLocker;
 
-
 export function updatePlatformUI(context) {
     const menuBtn = document.getElementById('menu-btn');
     const statsBtn = document.getElementById('stats-btn');
+    const infoBtn = document.getElementById('info-btn');
     const header = document.getElementById('game-header');
     const mainTitle = document.getElementById('main-title');
-    
-    // Toggle the header buttons based on where we are
-    if (menuBtn) menuBtn.classList.toggle('hidden', context === 'main_menu');
-    if (statsBtn) statsBtn.classList.toggle('hidden', context === 'main_menu');
-    
+
+    // 1. Check if this device is a phone controller!
+    const isClient = state.isMultiplayer && !state.isHost;
+
+    if (isClient) {
+        // FORCE keep everything hidden and the title centered on the controller
+        if (menuBtn) menuBtn.classList.add('hidden');
+        if (statsBtn) statsBtn.classList.add('hidden');
+        if (infoBtn) infoBtn.classList.add('hidden');
+        if (header) header.classList.add('home-screen'); 
+    } else {
+        // Normal behavior for Solo play or the TV Host
+        if (menuBtn) menuBtn.classList.toggle('hidden', context === 'main_menu');
+        if (statsBtn) statsBtn.classList.toggle('hidden', context === 'main_menu');
+        if (infoBtn) infoBtn.classList.remove('hidden');
+
+        if (context === 'main_menu') {
+            if (header) header.classList.add('home-screen');
+            if (mainTitle) mainTitle.innerText = "YARDBIRD'S GAMES";
+        } else {
+            if (header) header.classList.remove('home-screen');
+        }
+    }
+
+    // 2. Handle Rules Content
     const rulesContent = document.querySelector('#rules-modal .modal-content');
     if(!rulesContent) return;
 
     if (context === 'main_menu') {
-        // Apply the beautiful home screen styling
-        if (header) header.classList.add('home-screen');
-        if (mainTitle) mainTitle.innerText = "YARDBIRD'S GAMES";
-        
         rulesContent.innerHTML = `<h2>Welcome to Yardbird's</h2><p style="color:#ccc; line-height: 1.6;">Select a game cartridge from the main menu to begin.<br><br><strong>Party Mode:</strong> Want to play with friends? Select a game first, then click the menu icon (☰) in the top left to host a game on your TV and use phones as Kahoot-style controllers!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it!</button>`;
     } 
     else if (context === 'fast_math') {
-        // Revert to normal game header
-        if (header) header.classList.remove('home-screen');
-        
         rulesContent.innerHTML = `<h2>Fast Math Rules</h2><p style="color:#ccc; line-height: 1.6;">Solve the arithmetic problem shown on the screen as fast as possible. The faster you answer, the more points you get. <br><br>Get 3 in a row correct for a +50 Streak Bonus!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Let's Go!</button>`;
     }
     else if (context === 'song_trivia') {
-        // Revert to normal game header
-        if (header) header.classList.remove('home-screen');
-        
         rulesContent.innerHTML = `<h2>How to Play</h2><ul style="padding-left: 20px; font-size: 0.95rem; line-height: 1.6; color: #ccc;"><li><strong>Modes:</strong> Play Classic Genre, Artist-Specific, or Guess the Movie!</li><li><strong>Today Three:</strong> A daily synced challenge.</li><li><strong>The Lifeline:</strong> Multiple Choice options drop at 10s.</li></ul><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it! Let's Play</button>`;
     }
 }
