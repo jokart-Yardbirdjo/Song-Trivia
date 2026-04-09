@@ -65,6 +65,9 @@ function nextRound() {
         tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}`;
         tag.style.color = "var(--highlight)"; tag.style.borderColor = "var(--highlight)";
         
+        // NEW FIX 1: Push currentRound to Firebase to wake up the phones!
+        db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
+        
         // Put the target front and center in the feedback box
         document.getElementById('feedback').innerHTML = `
             <div style="font-size:3.5rem; font-weight:900; color:#fff; margin-bottom:15px; letter-spacing: 2px;">Target: ${problem.target}</div>
@@ -186,13 +189,17 @@ export function evaluateMultiplayerRound(players) {
     fbHTML += `</div>`;
     document.getElementById('feedback').innerHTML = fbHTML; 
 
-    // Draw the multiplayer scoreboard
+    / -------------------------------------------------------------
+    // NEW FIX 2: Remove this block to hide totals during the rounds!
+    /*
     document.getElementById('score-board').innerHTML = state.rawScores.map((s, i) => `
         <div class="score-pill" style="border-color:${colors[i % colors.length]};">
             <div class="p-name" style="color:${colors[i % colors.length]}">P${i+1}</div>
             <div class="p-pts" style="color:#fff">${s}</div>
             <div class="p-streak" style="color:${colors[i % colors.length]}; opacity:${state.streaks[i] > 0 ? 1 : 0}">🔥 ${state.streaks[i]}</div>
         </div>`).join('');
+    */
+    // -------------------------------------------------------------
 
     state.curIdx++; 
     setTimeout(nextRound, 4000); 
