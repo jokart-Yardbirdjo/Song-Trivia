@@ -69,7 +69,6 @@ export function setupDailyButton() {
     const dailyBtn = document.getElementById('daily-btn-top');
     if(!dailyBtn) return;
     
-    // SAFELY check if the user has played today using the new nested structure
     const isPlayed = state.userStats.song_trivia ? state.userStats.song_trivia.playedDailyToday : false;
     
     if (isPlayed) {
@@ -84,11 +83,8 @@ export function setupDailyButton() {
     }
 }
 
-export function populateStats() {}
-
 export function renderPlaylist(platform) {
     document.getElementById('playlist-list-container').style.display = 'block';
-    
     document.querySelectorAll('.plat-btn').forEach(b => b.classList.remove('active-plat'));
     document.getElementById(`plat-${platform}`).classList.add('active-plat');
 
@@ -104,43 +100,30 @@ export function renderPlaylist(platform) {
 export function buildSetupScreen(manifest) {
     document.getElementById('main-title').innerText = manifest.title;
     
-    // 1. Build the Mode Cards
     const modeGroup = document.getElementById('mode-group');
     modeGroup.innerHTML = ''; 
-    
     manifest.modes.forEach((mode, index) => {
         const card = document.createElement('div');
         card.className = `select-card ${index === 0 ? 'active' : ''}`;
         card.onclick = () => window.setMode(mode.id, card); 
-        card.innerHTML = `
-            <div class="card-title">${mode.title}</div>
-            <div class="card-desc">${mode.desc}</div>
-        `;
+        card.innerHTML = `<div class="card-title">${mode.title}</div><div class="card-desc">${mode.desc}</div>`;
         modeGroup.appendChild(card);
     });
 
-    // 2. Build the Difficulty Cards
     const levelGroup = document.getElementById('level-group');
     levelGroup.innerHTML = '';
-    
     manifest.levels.forEach((lvl, index) => {
         const card = document.createElement('div');
         card.className = `select-card ${index === 0 ? 'active' : ''}`;
         card.onclick = () => window.setLevel(lvl.id, card);
-        card.innerHTML = `
-            <div class="card-title">${lvl.title}</div>
-            <div class="card-desc">${lvl.desc}</div>
-        `;
+        card.innerHTML = `<div class="card-title">${lvl.title}</div><div class="card-desc">${lvl.desc}</div>`;
         levelGroup.appendChild(card);
     });
 
-    // 3. Set Default State Values
     state.gameState.mode = manifest.modes[0].id;
     state.gameState.level = manifest.levels[0].id;
     
-    // 4. Clean up UI based on Cartridge requirements
     const isSongTrivia = manifest.id === 'song_trivia';
-    
     document.getElementById('sub-selection-area').classList.toggle('hidden', !isSongTrivia);
     document.getElementById('players-rounds-area').classList.toggle('hidden', !isSongTrivia);
 
@@ -148,24 +131,21 @@ export function buildSetupScreen(manifest) {
     if (dailyContainer) dailyContainer.classList.toggle('hidden', !isSongTrivia);
 }
 
-// --- NEW SMART LOCKER ROOM LOGIC ---
-// Keep this empty so gameLogic.js doesn't crash if it tries to import it!
-export function populateStats() {}
+// Keep this empty so gameLogic.js doesn't crash!
+export function populateStats() {} 
 
 export function openStatsLocker() {
     const rawData = localStorage.getItem('yardbirdPlatformStats');
     const stats = rawData ? JSON.parse(rawData) : {};
     
-    // Grab individual game stats (with fallbacks if they haven't been played yet)
     const st = stats.song_trivia || {};
     const fm = stats.fast_math || {};
-    
-    // Figure out where we are!
     const context = window.activeCartridge ? window.activeCartridge.manifest.id : 'main_menu';
     const modalContent = document.querySelector('#stats-modal .modal-content');
 
+    if(!modalContent) return; 
+
     if (context === 'main_menu') {
-        // --- MAIN MENU: Overview of all games ---
         const stGames = st.gamesPlayed || 0;
         const fmGames = fm.gamesPlayed || 0;
         const totalGames = stats.platformGamesPlayed || (stGames + fmGames);
@@ -187,7 +167,6 @@ export function openStatsLocker() {
         `;
 
     } else if (context === 'fast_math') {
-        // --- FAST MATH: Speed stats ---
         modalContent.innerHTML = `
             <h2 style="color:var(--brand); margin-top:0; text-align:center; border-bottom:1px solid #333; padding-bottom:15px;">Fast Math Locker</h2>
             <div class="stat-grid">
@@ -207,7 +186,6 @@ export function openStatsLocker() {
         `;
 
     } else if (context === 'song_trivia') {
-        // --- SONG TRIVIA: The full Trophy Cabinet ---
         let acc = st.totalGuesses > 0 ? Math.round((st.correctGuesses / st.totalGuesses) * 100) : 0;
         const tr = st.trophies || {};
         
@@ -262,26 +240,19 @@ export function openStatsLocker() {
         `;
     }
 
-    // Finally, show the modal
-    if (window.showModal) {
-        window.showModal('stats-modal');
-    } else {
-        document.getElementById('stats-modal').classList.remove('hidden');
-    }
+    if (window.showModal) window.showModal('stats-modal');
+    else document.getElementById('stats-modal').classList.remove('hidden');
 }
-
 window.openStatsLocker = openStatsLocker;
 
 
 export function updatePlatformUI(context) {
-    // 1. Toggle the hamburger menu based on where we are
     const menuBtn = document.getElementById('menu-btn');
     if (menuBtn) menuBtn.classList.toggle('hidden', context === 'main_menu');
     
     const rulesContent = document.querySelector('#rules-modal .modal-content');
-    
-    // Note: We removed the statsContent overrides here so your Trophy Cabinet doesn't get deleted!
-    
+    if(!rulesContent) return;
+
     if (context === 'main_menu') {
         rulesContent.innerHTML = `<h2>Welcome to Yardbird's</h2><p style="color:#ccc; line-height: 1.6;">Select a game cartridge from the main menu to begin.<br><br><strong>Party Mode:</strong> Want to play with friends? Select a game first, then click the menu icon (☰) in the top left to host a game on your TV and use phones as Kahoot-style controllers!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it!</button>`;
     } 
