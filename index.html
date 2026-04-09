@@ -41,6 +41,17 @@
         #stats-btn { right: 0; font-size: 0.9rem; } 
         #main-title { margin: 0; color: #fff; font-size: 1.4rem; line-height: 1.2; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; padding: 0 80px 0 45px; text-align: center; }
 
+        /* ✨ DYNAMIC HOME HEADER ✨ */
+        #game-header.home-screen #info-btn { 
+            right: 0 !important; /* Shifts the info button to the far right edge */
+        }
+        #game-header.home-screen #main-title { 
+            font-size: 1.9rem !important; 
+            letter-spacing: 5px; 
+            padding: 0 !important; /* Centers perfectly since other buttons are hidden */
+            text-shadow: 0 10px 30px rgba(255, 255, 255, 0.15); /* Subtle premium glow */
+        }
+        
         .section-label { display: block; text-align: left; font-size: 0.75rem; color: var(--text-muted); margin: 25px 0 10px 0; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
 
         /* BUTTONS */
@@ -249,7 +260,7 @@
             0% { opacity: 0; transform: translateY(10px); }
             100% { opacity: 1; transform: translateY(0); }
         }
-        
+                
     </style>
 </head>
 <body>
