@@ -176,9 +176,9 @@ export function evaluateMultiplayerRound(players) {
             roundPts = Math.max(10, p.guess.time * 10);
             if (state.streaks[index] % 3 === 0) roundPts += 50; 
             state.rawScores[index] += roundPts;
-            fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.name}: +${roundPts}</div>`;
+            fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
         } else {
-            fbHTML += `<div style="color:var(--fail); font-size:1.1rem;">❌ ${p.name}: 0</div>`;
+            fbHTML += `<div style="color:var(--fail); font-size:1.1rem;">❌ ${p.nickname || p.name || "Player"}: 0</div>`;
             state.streaks[index] = 0;
         }
     });
