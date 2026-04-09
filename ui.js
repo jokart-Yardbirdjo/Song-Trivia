@@ -86,17 +86,21 @@ export function setupDailyButton() {
 
 export function populateStats() {
     if(!document.getElementById('stat-games')) return;
-    document.getElementById('stat-games').innerText = state.userStats.gamesPlayed;
-    let acc = state.userStats.totalGuesses > 0 ? Math.round((state.userStats.correctGuesses / state.userStats.totalGuesses) * 100) : 0;
-    document.getElementById('stat-acc').innerText = `${acc}%`;
-    document.getElementById('stat-hs-text').innerText = state.userStats.hsText;
-    document.getElementById('stat-snip').innerText = state.userStats.sniperHits;
+    const st = state.userStats.song_trivia || {}; // Use the nested structure!
     
-    if(state.userStats.trophies.perf) document.getElementById('trophy-perf').classList.add('unlocked');
-    if(state.userStats.trophies.mara) document.getElementById('trophy-mara').classList.add('unlocked');
-    if(state.userStats.trophies.snip) document.getElementById('trophy-snip').classList.add('unlocked');
-    if(state.userStats.trophies.streak) document.getElementById('trophy-streak').classList.add('unlocked');
-    if(state.userStats.trophies.expl) document.getElementById('trophy-expl').classList.add('unlocked');
+    document.getElementById('stat-games').innerText = state.userStats.platformGamesPlayed || 0;
+    let acc = st.totalGuesses > 0 ? Math.round((st.correctGuesses / st.totalGuesses) * 100) : 0;
+    document.getElementById('stat-acc').innerText = `${acc}%`;
+    document.getElementById('stat-hs-text').innerText = st.hsText || 0;
+    document.getElementById('stat-snip').innerText = st.sniperHits || 0;
+    
+    if(st.trophies) {
+        if(st.trophies.perf && document.getElementById('trophy-perf')) document.getElementById('trophy-perf').classList.add('unlocked');
+        if(st.trophies.mara && document.getElementById('trophy-mara')) document.getElementById('trophy-mara').classList.add('unlocked');
+        if(st.trophies.snip && document.getElementById('trophy-snip')) document.getElementById('trophy-snip').classList.add('unlocked');
+        if(st.trophies.streak && document.getElementById('trophy-streak')) document.getElementById('trophy-streak').classList.add('unlocked');
+        if(st.trophies.expl && document.getElementById('trophy-expl')) document.getElementById('trophy-expl').classList.add('unlocked');
+    }
 }
 
 export function renderPlaylist(platform) {
@@ -114,19 +118,17 @@ export function renderPlaylist(platform) {
     document.getElementById('playlist-list').innerHTML = playlistHTML;
 }
 
-// Add this to the bottom of ui.js
 export function buildSetupScreen(manifest) {
-    // --- ADD THIS LINE ---
     document.getElementById('main-title').innerText = manifest.title;
     
     // 1. Build the Mode Cards
     const modeGroup = document.getElementById('mode-group');
-    modeGroup.innerHTML = ''; // Clear old cards
+    modeGroup.innerHTML = ''; 
     
     manifest.modes.forEach((mode, index) => {
         const card = document.createElement('div');
         card.className = `select-card ${index === 0 ? 'active' : ''}`;
-        card.onclick = () => window.setMode(mode.id, card); // We use window because of the HTML onclick
+        card.onclick = () => window.setMode(mode.id, card); 
         card.innerHTML = `
             <div class="card-title">${mode.title}</div>
             <div class="card-desc">${mode.desc}</div>
@@ -156,41 +158,27 @@ export function buildSetupScreen(manifest) {
     // 4. Clean up UI based on Cartridge requirements
     const isSongTrivia = manifest.id === 'song_trivia';
     
-    // Hide the Era/Genre and Player/Rounds selection if not Song Trivia
     document.getElementById('sub-selection-area').classList.toggle('hidden', !isSongTrivia);
     document.getElementById('players-rounds-area').classList.toggle('hidden', !isSongTrivia);
 
-    // Hide the "Play Today Three" button and its subtitle if not Song Trivia
     const dailyContainer = document.getElementById('daily-btn-top').parentElement;
     if (dailyContainer) dailyContainer.classList.toggle('hidden', !isSongTrivia);
 }
 
-export function openStatsModal() {
-    const rawData = localStorage.getItem('yardbirdPlatformStats');
-    const contentDiv = document.getElementById('stats-content');
+// --- NEW SMART LOCKER ROOM LOGIC ---
+export function openStatsLocker() {
+    // Sync the HTML with the latest data in state
+    populateStats(); 
     
-    if (!rawData) {
-        contentDiv.innerHTML = "<div style='text-align:center; color:#888;'>No games played yet! Get out there and set some high scores.</div>";
+    // Show the modal
+    if (window.showModal) {
+        window.showModal('stats-modal');
     } else {
-        const stats = JSON.parse(rawData);
-        const st = stats.song_trivia || {}; // Fallback in case it's empty
-        
-        contentDiv.innerHTML = `
-            <div>🎮 <b>Platform Games:</b> ${stats.platformGamesPlayed || 0}</div>
-            <hr style="border-color:#333; margin:10px 0;">
-            <div style="color:var(--brand); font-weight:bold;">SONG TRIVIA</div>
-            <div>🏆 <b>High Score:</b> ${st.hsText || 0} Pts</div>
-            <div>🎯 <b>Sniper Hits:</b> ${st.sniperHits || 0}</div>
-            <div>🔥 <b>Current Streak:</b> ${st.currentStreak || 0} Days</div>
-            <div>🧠 <b>Accuracy:</b> ${st.totalGuesses > 0 ? Math.round((st.correctGuesses / st.totalGuesses) * 100) : 0}%</div>
-        `;
+        document.getElementById('stats-modal').classList.remove('hidden');
     }
-    
-    document.getElementById('stats-modal').classList.remove('hidden');
 }
+window.openStatsLocker = openStatsLocker;
 
-// Make sure to expose it to the HTML window!
-window.openStatsModal = openStatsModal;
 
 export function updatePlatformUI(context) {
     // 1. Toggle the hamburger menu based on where we are
@@ -198,18 +186,16 @@ export function updatePlatformUI(context) {
     if (menuBtn) menuBtn.classList.toggle('hidden', context === 'main_menu');
     
     const rulesContent = document.querySelector('#rules-modal .modal-content');
-    const statsContent = document.querySelector('#stats-modal .modal-content');
+    
+    // Note: We removed the statsContent overrides here so your Trophy Cabinet doesn't get deleted!
     
     if (context === 'main_menu') {
         rulesContent.innerHTML = `<h2>Welcome to Yardbird's</h2><p style="color:#ccc; line-height: 1.6;">Select a game cartridge from the main menu to begin.<br><br><strong>Party Mode:</strong> Want to play with friends? Select a game first, then click the menu icon (☰) in the top left to host a game on your TV and use phones as Kahoot-style controllers!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it!</button>`;
-        statsContent.innerHTML = `<h2>Platform Stats</h2><div class="stat-box" style="margin-bottom:20px;"><div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Total Games Played</div><div class="stat-val">${state.userStats.platformGamesPlayed || 0}</div></div><p style="color:#aaa; font-size:0.9rem; text-align:center;">Load a specific game to view its detailed stats and trophies!</p><button class="btn btn-main" onclick="hideModal('stats-modal')">Close</button>`;
     } 
     else if (context === 'fast_math') {
         rulesContent.innerHTML = `<h2>Fast Math Rules</h2><p style="color:#ccc; line-height: 1.6;">Solve the arithmetic problem shown on the screen as fast as possible. The faster you answer, the more points you get. <br><br>Get 3 in a row correct for a +50 Streak Bonus!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Let's Go!</button>`;
-        statsContent.innerHTML = `<h2>Fast Math Stats</h2><div class="stat-box" style="margin-bottom:20px;"><div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Games Played</div><div class="stat-val">${state.userStats.fast_math ? state.userStats.fast_math.gamesPlayed : 0}</div></div><button class="btn btn-main" onclick="hideModal('stats-modal')">Close</button>`;
     }
     else if (context === 'song_trivia') {
         rulesContent.innerHTML = `<h2>How to Play</h2><ul style="padding-left: 20px; font-size: 0.95rem; line-height: 1.6; color: #ccc;"><li><strong>Modes:</strong> Play Classic Genre, Artist-Specific, or Guess the Movie!</li><li><strong>Today Three:</strong> A daily synced challenge.</li><li><strong>The Lifeline:</strong> Multiple Choice options drop at 10s.</li></ul><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it! Let's Play</button>`;
-        statsContent.innerHTML = `<h2>Trivia Stats</h2><div class="stat-box" style="margin-bottom:20px;"><div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Games Played</div><div class="stat-val">${state.userStats.song_trivia ? state.userStats.song_trivia.gamesPlayed : 0}</div></div><button class="btn btn-main" onclick="hideModal('stats-modal')">Close</button>`;
     }
 }
