@@ -47,7 +47,8 @@ export const state = {
         },
         fast_math: {
             gamesPlayed: 0, hsText: 0, correctGuesses: 0, totalGuesses: 0
-        }
+        }, // <--- ADD THIS COMMA
+        consensus: { gamesPlayed: 0, highScore: 0 } // <--- ADD THIS LINE
     },
     globalHighScore: localStorage.getItem('yardbirdHighScore') || 0
 };
