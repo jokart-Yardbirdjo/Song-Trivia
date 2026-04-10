@@ -411,6 +411,21 @@ export async function executeFetchLogic() {
 
         if(state.songs.length < 3) throw new Error("Not enough tracks found! Try broadening your search.");
         else if(state.songs.length < state.maxRounds) state.maxRounds = state.songs.length;
+
+        // -------------------------------------------------------------
+        // NEW FEATURE: Generate 2X Bonus Rounds (1 per 5 rounds)
+        state.doubleRounds = [];
+        for (let i = 0; i < state.maxRounds; i += 5) {
+            // If it is the first block of 5, the minimum index is 2 (Round 3). 
+            // Otherwise, the minimum is the start of that 5-round block.
+            let min = i === 0 ? 2 : i; 
+            let max = Math.min(i + 4, state.maxRounds - 1);
+            if (min <= max) {
+                let randomRound = Math.floor(Math.random() * (max - min + 1)) + min;
+                state.doubleRounds.push(randomRound);
+            }
+        }
+        // -------------------------------------------------------------
         
         launchGameUI();
     } catch (e) { 
