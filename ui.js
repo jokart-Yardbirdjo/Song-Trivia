@@ -9,11 +9,29 @@ export function setMode(mode, element) {
     document.querySelectorAll('#mode-group .select-card').forEach(el => el.classList.remove('active'));
     element.classList.add('active');
     state.gameState.mode = mode;
-    state.gameState.sub = subOptions[mode][0]; 
-    
-    document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
-    document.getElementById('custom-input').classList.add('hidden');
-    renderSubPills();
+
+    const customInput = document.getElementById('custom-input');
+
+    // Safe check: Only run sub-options logic if this mode uses them (like Song Trivia)
+    if (subOptions[mode]) {
+        state.gameState.sub = subOptions[mode][0]; 
+        document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
+        customInput.classList.add('hidden');
+        customInput.placeholder = "Separate multiple entries with a comma";
+        customInput.type = "text";
+        renderSubPills();
+    }
+
+    // Consensus Hook: Show API Key input if AI Infinite is selected
+    if (mode === 'ai_infinite') {
+        customInput.classList.remove('hidden');
+        customInput.placeholder = "Paste your OpenAI API Key...";
+        customInput.type = "password"; // Hides the key visually
+        const savedKey = localStorage.getItem('consensus_openai_key');
+        if (savedKey) customInput.value = savedKey;
+    } else if (mode === 'party_pack') {
+        customInput.classList.add('hidden');
+    }
 
     const levelGroup = document.getElementById('level-group');
     if (mode === 'movie') {
@@ -245,6 +263,27 @@ export function openStatsLocker() {
             </div>
         `;
     }
+    // ... ADD THIS right below the song_trivia block ...
+    } else if (context === 'consensus') {
+        const con = stats.consensus || {};
+        modalContent.innerHTML = `
+            <h2 style="color:var(--brand); margin-top:0; text-align:center; border-bottom:1px solid #333; padding-bottom:15px;">Consensus Locker</h2>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Games Played</div>
+                    <div class="stat-val">${con.gamesPlayed || 0}</div>
+                </div>
+                <div class="stat-box">
+                    <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">High Score</div>
+                    <div class="stat-val" style="color:var(--p1)">${con.highScore || 0}</div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                <button class="btn btn-main" onclick="hideModal('stats-modal')" style="flex: 1; margin-right: 10px;">Close</button>
+                <button class="btn btn-reset" onclick="if(window.activeCartridge && window.activeCartridge.resetStats) { window.activeCartridge.resetStats(); hideModal('stats-modal'); }" style="margin-top: 0; padding: 16px;">Reset</button>
+            </div>
+        `;
+    }
 
     if (window.showModal) window.showModal('stats-modal');
     else document.getElementById('stats-modal').classList.remove('hidden');
@@ -293,5 +332,9 @@ export function updatePlatformUI(context) {
     }
     else if (context === 'song_trivia') {
         rulesContent.innerHTML = `<h2>How to Play</h2><ul style="padding-left: 20px; font-size: 0.95rem; line-height: 1.6; color: #ccc;"><li><strong>Modes:</strong> Play Classic Genre, Artist-Specific, or Guess the Movie!</li><li><strong>Today Three:</strong> A daily synced challenge.</li><li><strong>The Lifeline:</strong> Multiple Choice options drop at 10s.</li></ul><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it! Let's Play</button>`;
+    }
+    // ... ADD THIS at the very bottom of updatePlatformUI ...
+    else if (context === 'consensus') {
+        rulesContent.innerHTML = `<h2>How to Play</h2><p style="color:#ccc; line-height: 1.6;">A social party game of voting, debating, and guessing the room. Look at the TV to see the prompt, and use your phone to secretly submit your answers!<br><br><strong>Modes:</strong> Play the classic Party Pack, or use Infinite AI to generate absurd new prompts!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Let's Go!</button>`;
     }
 }
