@@ -485,6 +485,13 @@ function nextTrack() {
         updateLeaderboard(-1); 
         document.documentElement.style.setProperty('--active-vis', 'var(--highlight)');
         document.getElementById('main-title').style.color = '#ffffff';
+
+        // Append the bonus text!
+        tag.innerText = `ROUND ${state.curIdx + 1} / ${state.maxRounds}${doubleText}`;
+        tag.style.color = isDoubleRound ? "#ffcc00" : "var(--highlight)"; 
+        tag.style.borderColor = isDoubleRound ? "#ffcc00" : "var(--highlight)";
+        // ...
+        
         tag.innerText = `ROUND ${state.curIdx + 1} / ${state.maxRounds}`;
         tag.style.color = "var(--highlight)"; tag.style.borderColor = "var(--highlight)";
         db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
@@ -739,6 +746,11 @@ export function evaluateGuess(isCorrectMC = null) {
         state.streaks[pIdx] = 0; roundPts = 0; 
     }
 
+    if (state.doubleRounds.includes(state.curIdx) && correct) {
+        roundPts *= 2;
+        fbHTML += `<div style="color:#ffcc00; font-size:0.9rem; margin-top:5px; font-weight:bold;">⭐ 2X BONUS ROUND APPLIED!</div>`;
+    }
+    
     state.rawScores[pIdx] += roundPts; updateLeaderboard(pIdx); 
 
     fbHTML += `<div style="font-size:1.05rem; color:#fff; margin-top:10px;">${realA} - ${realS}</div>`;
@@ -799,6 +811,15 @@ export function evaluateMultiplayerRound(players) {
             } else {
                 state.streaks[index] = 0; // Using MC breaks the streak!
             }
+
+            // -------------------------------------------------------------
+            // NEW FEATURE: Apply the 2X multiplier right here!
+            if (state.doubleRounds && state.doubleRounds.includes(state.curIdx)) {
+                roundPts *= 2;
+                fbHTML += `<div style="color:#ffcc00; font-size:0.85rem; margin-top:2px; font-weight:bold;">⭐ 2X BONUS APPLIED!</div>`;
+            }
+            // -------------------------------------------------------------
+            
             state.rawScores[index] += roundPts;
             fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
         } else {
