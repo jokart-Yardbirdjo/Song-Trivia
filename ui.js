@@ -55,7 +55,8 @@ export function setSub(val, element) {
 export function setPill(groupId, element, val) {
     document.querySelectorAll(`#${groupId} .pill`).forEach(el => el.classList.remove('active'));
     element.classList.add('active');
-    if(groupId === 'players-group') state.gameState.players = val;
+    
+    // We completely removed the check for 'players-group'
     if(groupId === 'rounds-group') state.gameState.rounds = val;
 }
 
