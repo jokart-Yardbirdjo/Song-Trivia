@@ -158,6 +158,9 @@ export async function joinRoom() {
             document.getElementById('client-locked-screen').classList.add('hidden');
             document.getElementById('client-mc-inputs').classList.add('hidden');
             
+            // 👇 ADD THIS LINE TO CLEAR CUSTOM CARTRIDGE UIs 👇
+            if (document.getElementById('client-consensus-ui')) document.getElementById('client-consensus-ui').innerHTML = '';    
+
             // Only show text boxes if the active game is Song Trivia!
             if (window.activeCartridge && window.activeCartridge.manifest.id === 'song_trivia') {
                 document.getElementById('client-text-inputs').classList.remove('hidden');
@@ -186,6 +189,19 @@ export async function joinRoom() {
             promptDiv.classList.remove('hidden');
         } else if (promptDiv) {
             promptDiv.classList.add('hidden');
+        }
+    });
+    // 3. THE DYNAMIC CARTRIDGE UI LISTENER (For The Consensus & Future Games)
+    db.ref(`rooms/${state.roomCode}/hostState`).on('value', snap => {
+        if (snap.exists() && window.activeCartridge && window.activeCartridge.renderClientUI) {
+            
+            // 1. Hide the default Song Trivia / Fast Math inputs
+            document.getElementById('client-text-inputs').classList.add('hidden');
+            document.getElementById('client-mc-inputs').classList.add('hidden');
+            document.getElementById('client-locked-screen').classList.add('hidden');
+            
+            // 2. Pass the Firebase payload directly to the active Cartridge
+            window.activeCartridge.renderClientUI(snap.val());
         }
     });
 }
