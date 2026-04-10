@@ -1,76 +1,85 @@
-// state.js
-export const state = {
-    isMultiplayer: false,
-    isHost: false,
-    roomCode: "",
-    myPlayerId: "",
-    isGracePeriod: false,
+// app.js
+import { state } from './state.js';
+import { showModal, hideModal, setMode, setSub, setPill, setLevel, renderPlaylist, renderSubPills, setupDailyButton, buildSetupScreen, updatePlatformUI } from './ui.js';
+import { handleHostSetup, handleJoinScreen, createRoom, joinRoom, startMultiplayerGame, cancelLobby, cancelActiveGame, submitClientTextGuess, requestClientLifeline } from './multiplayer.js';
 
-    gameState: {
-        mode: 'genre',
-        sub: 'shwe-special',
-        players: 1,
-        rounds: 10,
-        level: 'easy'
-    },
+import * as SongTrivia from './gameLogic.js';
+import * as FastMath from './mathLogic.js';
+import * as Consensus from './consensusLogic.js';
 
-    songs: [],
-    globalPool: [], 
-    curIdx: 0, 
-    numPlayers: 1, 
-    maxRounds: 10, 
-    roundsPerPlayer: 10,
-    rawScores: [], 
-    streaks: [], 
-    matchHistory: [],
-    timeLimit: 30, 
-    timeTaken: 0,
-    timerId: null, 
-    guessTimerId: null, 
-    timeLeft: 0, 
-    startTime: 0,
-    isDailyMode: false, 
-    isProcessing: false, 
-    hasUsedLifeline: false, 
-    scoreLock: 0,
+// Attach to window so buttons can always find the active cartridge
+window.activeCartridge = SongTrivia; 
 
-    // Replaces the old userStats object in state.js
-    activeCartridgeId: null, // Keeps track of what game is currently plugged in
+window.showModal = showModal; window.hideModal = hideModal;
+window.setMode = setMode; window.setSub = setSub; window.setPill = setPill; window.setLevel = setLevel;
+window.renderPlaylist = renderPlaylist;
+window.handleHostSetup = handleHostSetup; window.handleJoinScreen = handleJoinScreen;
+window.createRoom = createRoom; window.joinRoom = joinRoom;
+window.startMultiplayerGame = startMultiplayerGame; window.cancelLobby = cancelLobby;
+window.cancelActiveGame = cancelActiveGame; window.submitClientTextGuess = submitClientTextGuess;
+window.requestClientLifeline = requestClientLifeline;
+
+window.loadCartridge = (gameId) => {
+    // 👇 The updated routing logic 👇
+    if (gameId === 'fast_math') window.activeCartridge = FastMath;
+    else if (gameId === 'consensus') window.activeCartridge = Consensus;
+    else window.activeCartridge = SongTrivia;
     
-    userStats: JSON.parse(localStorage.getItem('yardbirdPlatformStats')) || { 
-        platformGamesPlayed: 0,
-        song_trivia: JSON.parse(localStorage.getItem('yardbirdStatsV6')) || {
-            gamesPlayed: 0, totalGuesses: 0, correctGuesses: 0, hsText: 0, hsMC: 0, sniperHits: 0, 
-            lastPlayedDate: null, currentStreak: 0, playedDailyToday: false, 
-            modesPlayed: { genre: false, artist: false, movie: false }, 
-            trophies: { perf: false, mara: false, snip: false, streak: false, expl: false } 
-        },
-        fast_math: {
-            gamesPlayed: 0, hsText: 0, correctGuesses: 0, totalGuesses: 0
-        }
-        consensus: { gamesPlayed: 0, highScore: 0 }
-    },
-    globalHighScore: localStorage.getItem('yardbirdHighScore') || 0
+    state.activeCartridgeId = gameId;
+    document.getElementById('main-title').innerText = window.activeCartridge.manifest.title;
+    updatePlatformUI(gameId); 
 };
 
-export const audio = new Audio();
-export const sfxTick = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-export const sfxCheer = new Audio('https://actions.google.com/sounds/v1/crowds/crowd_cheer.ogg');
-export const sfxBuzzer = new Audio('https://actions.google.com/sounds/v1/alarms/buzzer_alarm.ogg');
-sfxTick.volume = 0.5; sfxCheer.volume = 0.7; sfxBuzzer.volume = 0.4;
+window.selectGame = (gameId) => {
+    try {
+        window.loadCartridge(gameId); 
+        buildSetupScreen(window.activeCartridge.manifest);
+        if (gameId === 'song_trivia') renderSubPills();
 
-export const colors = ['var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)'];
-
-export const subOptions = {
-    genre: ['shwe-special', 'classic-rock', '2000s', 'one-hit-wonders', 'custom'],
-    artist: ['Taylor Swift', 'Led Zeppelin', 'Michael Jackson', 'A.R. Rahman', 'custom'],
-    movie: ['Disney Classics', 'Hollywood Blockbusters', 'Bollywood Hits', 'Tamil Cinema', 'custom']
+        document.getElementById('main-menu-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+    } catch(e) {
+        console.error("Cartridge Load Error:", e);
+        alert("Oops! The engine hit an error loading this game. Check the console.");
+    }
 };
 
-export const top20DisneyMovies = ["The Lion King", "Beauty and the Beast", "Aladdin", "Toy Story", "Snow White and the Seven Dwarfs", "The Little Mermaid", "Finding Nemo", "Up", "Monsters, Inc.", "Cinderella", "Mulan", "Tangled", "The Princess and the Frog", "The Incredibles", "Ratatouille", "WALL-E", "Frozen", "Lilo & Stitch", "The Jungle Book", "Peter Pan"];
-export const top20BollywoodMovies = ["Lagaan", "Sholay", "Mughal-e-Azam", "Mother India", "Pakeezah", "Deewaar", "Anand", "Guide", "Dilwale Dulhania Le Jayenge", "Kabhi Khushi Kabhie Gham", "3 Idiots", "Taare Zameen Par", "Rang De Basanti", "Gangs of Wasseypur", "Black", "Swades", "Chak De! India", "Dangal", "Bajrangi Bhaijaan", "PK"];
-export const top20TamilMovies = ["Nayakan", "Thalapathi", "Indian", "Baasha", "Anbe Sivam", "Mouna Ragam", "Roja", "Moondram Pirai", "Mullum Malarum", "Nizhalgal", "Thiruda Thiruda", "Gentleman", "Thevar Magan", "Paruthiveeran", "Karnan", "Kannathil Muthamittal", "Alaipayuthey", "Bombay", "Sethu", "Kaadhal"];
-export const top20HollywoodMovies = ["The Godfather", "Saturday Night Fever", "Pulp Fiction", "The Graduate", "The Bodyguard", "Purple Rain", "Moulin Rouge!", "Almost Famous", "The Lion King", "Guardians of the Galaxy", "Top Gun", "Trainspotting", "The Wizard of Oz", "West Side Story", "The Sound of Music", "Dirty Dancing", "Once", "The Big Chill", "O Brother, Where Art Thou?", "The Last of the Mohicans"];
+window.startDailyChallenge = () => window.activeCartridge.startDailyChallenge();
+window.startGame = () => window.activeCartridge.startGame();
+window.handleStop = () => window.activeCartridge.handleStop();
+window.forceLifeline = () => window.activeCartridge.forceLifeline();
+window.evaluateGuess = (isCorrect) => window.activeCartridge.evaluateGuess(isCorrect);
+window.resetStats = () => window.activeCartridge.resetStats();
+window.shareChallenge = () => window.activeCartridge.shareChallenge();
+window.evaluateMultiplayerRound = (players) => window.activeCartridge.evaluateMultiplayerRound(players);
 
-export const shweArtistsFull = ["Nirvana", "Mariah Carey", "Oasis", "Britney Spears", "Red Hot Chili Peppers", "No Doubt", "Pearl Jam", "Alanis Morissette", "Green Day", "Madonna", "Bryan Adams", "Backstreet Boys", "Bon Jovi", "Spice Girls", "Guns N' Roses", "Celine Dion", "Roxette", "TLC", "Aerosmith", "Sheryl Crow", "U2", "The Cranberries", "R.E.M.", "Janet Jackson", "Dire Straits", "Whitney Houston", "Christina Aguilera", "Hanson", "Matchbox Twenty", "Ace of Base", "Goo Goo Dolls", "Aqua", "Natalie Imbruglia", "Black Eyed Peas", "Meat Loaf", "Mr. Big", "Michael Jackson", "The Cardigans", "NSYNC", "Destiny's Child", "Ricky Martin", "Jennifer Lopez", "Cher", "Savage Garden", "Boyzone", "En Vogue", "Boyz II Men", "All Saints", "Shania Twain", "Sarah McLachlan", "Jewel", "Faith Hill", "Fiona Apple", "Melissa Etheridge", "Tracy Chapman", "Sophie B. Hawkins", "The Corrs", "Paula Cole", "Weezer", "Third Eye Blind", "Counting Crows", "Smash Mouth", "Spin Doctors", "Smashing Pumpkins", "Foo Fighters", "Blink-182", "Garbage", "The Wallflowers", "Sugar Ray", "Hootie & the Blowfish", "Gin Blossoms", "Barenaked Ladies", "Collective Soul", "Dave Matthews Band", "Fugees", "Lauryn Hill", "Salt-N-Pepa", "Coolio", "Toni Braxton", "Seal"];
-export const oneHitWondersFull = ["Chumbawamba", "Lou Bega", "Los Del Rio", "Baha Men", "Dexys Midnight Runners", "Gotye", "Vanilla Ice", "A-ha", "Soft Cell", "Sir Mix-A-Lot", "Right Said Fred", "Tommy Tutone", "Survivor", "Carl Douglas", "Los Lobos", "Blind Melon", "Men At Work", "Haddaway", "Eiffel 65", "The Knack", "Deep Blue Something", "Fountains of Wayne", "Wheatus", "Semisonic", "Nena"];
+window.onload = () => {
+    document.getElementById('main-title').innerText = "YARDBIRD'S GAMES";
+    updatePlatformUI('main_menu'); 
+    
+    // Safely check the nested song_trivia stats
+    const todayStr = new Date().toDateString();
+    if (state.userStats.song_trivia && state.userStats.song_trivia.lastPlayedDate !== todayStr && state.userStats.song_trivia.lastPlayedDate !== null) {
+        state.userStats.song_trivia.playedDailyToday = false;
+        localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
+    }
+    
+    setupDailyButton();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoRoom = urlParams.get('room');
+    if (autoRoom) {
+        document.getElementById('main-menu-screen').classList.add('hidden'); 
+        handleJoinScreen(); 
+        document.getElementById('join-code').value = autoRoom; 
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(() => document.getElementById('join-name').focus(), 100);
+    }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    const triggerSubmit = (e) => { if (e.key === 'Enter') document.getElementById('submit-btn').click(); };
+    if(document.getElementById('guess-artist')) document.getElementById('guess-artist').addEventListener('keypress', triggerSubmit);
+    if(document.getElementById('guess-song')) document.getElementById('guess-song').addEventListener('keypress', triggerSubmit);
+    if(document.getElementById('guess-movie')) document.getElementById('guess-movie').addEventListener('keypress', triggerSubmit);
+});
