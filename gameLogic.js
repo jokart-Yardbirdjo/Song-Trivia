@@ -75,14 +75,13 @@ export async function startDailyChallenge() {
 export function startGame() {
     state.isDailyMode = false;
     
-    // -------------------------------------------------------------
-    // NEW FIX 3: Respect the multiplayer lobby count, and don't 
-    // multiply the maxRounds if everyone is playing at the same time!
-    state.numPlayers = state.isMultiplayer ? state.numPlayers : state.gameState.players;
+    // NEW FIX: Solo play is permanently 1 player. Multiplayer relies strictly on the lobby.
+    state.numPlayers = state.isMultiplayer ? state.numPlayers : 1;
     state.timeLimit = state.gameState.level === 'hard' ? 10 : 30; 
     state.roundsPerPlayer = state.gameState.rounds;
-    state.maxRounds = state.isMultiplayer ? state.roundsPerPlayer : (state.roundsPerPlayer * state.numPlayers);
-    // -------------------------------------------------------------
+    
+    // NEW FIX: We no longer need to multiply the maxRounds!
+    state.maxRounds = state.roundsPerPlayer;
     
     document.getElementById('start-btn-top').style.display = 'none';
     document.getElementById('daily-btn-top').style.display = 'none';
