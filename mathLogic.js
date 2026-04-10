@@ -94,6 +94,19 @@ export function startGame() {
     
     // NEW FIX: Let players decide how many rounds they want to play!
     state.maxRounds = state.gameState.rounds; 
+
+    // -------------------------------------------------------------
+    // NEW FEATURE: Generate 2X Bonus Rounds (1 per 5 rounds)
+    state.doubleRounds = [];
+    for (let i = 0; i < state.maxRounds; i += 5) {
+        let min = i === 0 ? 2 : i; 
+        let max = Math.min(i + 4, state.maxRounds - 1);
+        if (min <= max) {
+            let randomRound = Math.floor(Math.random() * (max - min + 1)) + min;
+            state.doubleRounds.push(randomRound);
+        }
+    }
+    // -------------------------------------------------------------
     
     state.curIdx = 0;
     state.rawScores = new Array(state.numPlayers).fill(0);
@@ -117,12 +130,22 @@ function nextRound() {
     const problem = generateMathProblem();
     const tag = document.getElementById('active-player');
 
+    // -------------------------------------------------------------
+    // STEP 2: ANNOUNCEMENT LOGIC
+    // Check if the current round index is one of our lucky winners
+    const isDoubleRound = state.doubleRounds && state.doubleRounds.includes(state.curIdx);
+    const doubleText = isDoubleRound ? " - ⭐ 2X BONUS!" : "";
+    // -------------------------------------------------------------
+
     if (state.isMultiplayer && state.isHost) {
         // --- TV SCREEN ---
         document.getElementById('score-board').innerHTML = ''; 
-        tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}`;
-        tag.style.color = "var(--highlight)"; tag.style.borderColor = "var(--highlight)";
+        // UPDATE THE TAG WITH THE BONUS TEXT
+        tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}${doubleText}`;
+        tag.style.color = isDoubleRound ? "#ffcc00" : "var(--highlight)"; 
+        tag.style.borderColor = isDoubleRound ? "#ffcc00" : "var(--highlight)";
         
+             
         // NEW FIX 1: Push currentRound to Firebase to wake up the phones!
         db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
         
@@ -150,9 +173,12 @@ function nextRound() {
 
     } else {
         // --- SOLO SCREEN ---
-        tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}`;
-        tag.style.color = colors[0]; tag.style.borderColor = colors[0];
+        // UPDATE THE TAG WITH THE BONUS TEXT
+        tag.innerText = `FAST MATH: ROUND ${state.curIdx + 1}/${state.maxRounds}${doubleText}`;
+        tag.style.color = isDoubleRound ? "#ffcc00" : colors[0]; 
+        tag.style.borderColor = isDoubleRound ? "#ffcc00" : colors[0];
         
+              
         // Put the target front and center
         document.getElementById('feedback').innerHTML = `<div style="font-size:3rem; font-weight:900; color:#fff; margin-bottom:15px;">Target: ${problem.target}</div>`;
         
@@ -235,14 +261,19 @@ export function evaluateGuess(isCorrect) {
 
     if (isCorrect) {
         state.streaks[0]++;
-        
-        // NEW FIX: 0 seconds = 0 points. Time left * 10.
         roundPts = state.timeLeft * 10; 
         if (state.streaks[0] > 0 && state.streaks[0] % 3 === 0) roundPts += 50;
         
+        // APPLY 2X BONUS
+        if (state.doubleRounds.includes(state.curIdx)) {
+            roundPts *= 2;
+            document.getElementById('feedback').innerHTML = `<div style="color:#fff; font-size:1.5rem; font-weight:bold;">✅ ⭐ 2X BONUS! +${roundPts}</div>`;
+        } else {
+            document.getElementById('feedback').innerHTML = `<div style="color:var(--success); font-size:1.5rem; font-weight:bold;">✅ CORRECT! +${roundPts}</div>`;
+        }
+        
         state.rawScores[0] += roundPts;
         sfxCheer.currentTime = 0; sfxCheer.play().catch(()=>{});
-        document.getElementById('feedback').innerHTML = `<div style="color:var(--success); font-size:1.5rem; font-weight:bold;">✅ CORRECT! +${roundPts}</div>`;
     } else {
         state.streaks[0] = 0;
         sfxBuzzer.currentTime = 0; sfxBuzzer.play().catch(()=>{});
@@ -260,6 +291,7 @@ export function evaluateMultiplayerRound(players) {
 
     let fbHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:15px; font-weight:bold;">`;
     const playerIds = Object.keys(players);
+    const isDoubleRound = state.doubleRounds.includes(state.curIdx);
     
     playerIds.forEach((pid, index) => {
         const p = players[pid];
@@ -268,13 +300,18 @@ export function evaluateMultiplayerRound(players) {
 
         if (correct) {
             state.streaks[index]++;
-            
-            // NEW FIX: 0 seconds = 0 points. Phone's recorded time * 10.
             roundPts = p.guess.time * 10;
             if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundPts += 50; 
             
+            // APPLY 2X BONUS
+            if (isDoubleRound) {
+                roundPts *= 2;
+                fbHTML += `<div style="color:#fff; font-size:1.1rem;">⭐ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
+            } else {
+                fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
+            }
+            
             state.rawScores[index] += roundPts;
-            fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
         } else {
             fbHTML += `<div style="color:var(--fail); font-size:1.1rem;">❌ ${p.nickname || p.name || "Player"}: 0</div>`;
             state.streaks[index] = 0;
@@ -283,7 +320,6 @@ export function evaluateMultiplayerRound(players) {
 
     fbHTML += `</div>`;
     document.getElementById('feedback').innerHTML = fbHTML; 
-
     state.curIdx++; 
     setTimeout(nextRound, 4000); 
 }
