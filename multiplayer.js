@@ -4,7 +4,6 @@ import { state, colors } from './state.js';
 import { hideModal } from './ui.js';
 
 export function handleHostSetup() {
-    // NEW: Don't let them host until they pick a game!
     if (!state.activeCartridgeId) {
         alert("Please select a Game Cartridge from the Main Menu first!");
         hideModal('multiplayer-modal');
@@ -16,7 +15,10 @@ export function handleHostSetup() {
     document.getElementById('start-btn-top').innerText = "▶ CREATE MULTIPLAYER ROOM";
     document.getElementById('start-btn-top').onclick = createRoom;
     document.getElementById('daily-btn-top').parentElement.classList.add('hidden'); 
-    document.getElementById('players-group').parentElement.classList.add('hidden'); 
+    
+    // NEW FIX: Target the parent wrapper directly instead of looking for the deleted player group!
+    document.getElementById('players-rounds-area').classList.add('hidden'); 
+    
     document.getElementById('cancel-setup-btn').classList.remove('hidden');
     document.getElementById('stats-btn').classList.add('hidden');
     state.isMultiplayer = true;
