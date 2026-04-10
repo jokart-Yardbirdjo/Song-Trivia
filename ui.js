@@ -130,7 +130,8 @@ export function buildSetupScreen(manifest) {
     
     const isSongTrivia = manifest.id === 'song_trivia';
     document.getElementById('sub-selection-area').classList.toggle('hidden', !isSongTrivia);
-    document.getElementById('players-rounds-area').classList.toggle('hidden', !isSongTrivia);
+    // NEW FIX: Ensure the Rounds menu is ALWAYS visible, regardless of what game is plugged in!
+    document.getElementById('players-rounds-area').classList.remove('hidden');
 
     const dailyContainer = document.getElementById('daily-btn-top').parentElement;
     if (dailyContainer) dailyContainer.classList.toggle('hidden', !isSongTrivia);
