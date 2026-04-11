@@ -6,13 +6,13 @@ export const manifest = {
     id: "consensus",
     title: "THE CONSENSUS",
     subtitle: "A Social Party Game",
-    modes: [
-        { id: "party_pack", title: "📦 Party Pack", desc: "Play with classic built-in questions." },
-        { id: "ai_infinite", title: "✨ Infinite AI", desc: "Generate unique, absurd prompts using OpenAI." }
-    ],
+    hasDaily: false, // <--- ADDED
+    modes: [ ... ], // Keep as is
     levels: [
+        // <--- ADDED MEDIUM TO MATCH 3-TIER RULE
         { id: "easy", title: "🟢 Casual", desc: "30s rounds. Relaxed pacing." },
-        { id: "hard", title: "🔴 Speedrun", desc: "15s rounds. Pure chaos." }
+        { id: "medium", title: "🟡 Standard", desc: "20s rounds. Normal debating time." },
+        { id: "hard", title: "🔴 Speedrun", desc: "10s rounds. Pure chaos." }
     ],
     clientUI: "dynamic"
 };
