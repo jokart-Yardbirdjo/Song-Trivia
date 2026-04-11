@@ -208,25 +208,8 @@ function nextRound() {
                 db.ref(`rooms/${state.roomCode}/players`).update(updates);
             }
         });
-
-        // The "Get Ready" Loading Phase
-        document.getElementById('feedback').innerHTML = `
-            <div style="font-size:3.5rem; font-weight:900; color:var(--brand); margin-top:40px; margin-bottom:15px;">ROUND ${state.curIdx + 1}</div>
-            <div style="font-size:1.8rem; color:#fff; font-weight:bold;">Get Ready...</div>
-        `;
-        document.getElementById('timer').innerText = "";
-        document.getElementById('active-player').innerText = "LOADING...";
-
-        db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'loading' });
-
-        // Show prompt after 3 seconds
-        setTimeout(displayPrompt, 3000);
-    } else if (state.numPlayers === 1) {
-        displayPrompt();
     }
-}
 
-function displayPrompt() {
     const q = state.songs[state.curIdx];
     const isDouble = state.doubleRounds.includes(state.curIdx);
     const tag = document.getElementById('active-player');
@@ -279,10 +262,9 @@ export function renderClientUI(hostState) {
     
     window.consensusTempPayload = { guess1: null, guess2: null }; 
 
-    if (hostState.phase === 'reveal' || hostState.phase === 'gameover' || hostState.phase === 'loading') {
+    if (hostState.phase === 'reveal' || hostState.phase === 'gameover') {
         if(promptDiv) promptDiv.innerText = "";
-        let waitText = hostState.phase === 'loading' ? 'Get Ready...' : 'Look at the TV!';
-        container.innerHTML = `<div style="font-size:1.8rem; color:var(--text-muted); font-weight:bold; margin-top:40px;">${waitText}</div>`;
+        container.innerHTML = `<div style="font-size:1.8rem; color:var(--text-muted); font-weight:bold; margin-top:40px;">Look at the TV!</div>`;
         return;
     }
 
@@ -299,7 +281,6 @@ export function renderClientUI(hostState) {
             let inner = "";
             snap.forEach(p => {
                 const isMe = p.key === state.myPlayerId;
-                // FIX: No disabled attribute. You CAN vote for yourself.
                 inner += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
             });
             container.innerHTML = inner;
@@ -307,7 +288,6 @@ export function renderClientUI(hostState) {
         return; 
     } 
     else if (hostState.type === 2) {
-        // Pass "type 2" explicitly to the submit payload to prevent NaN checks
         html += `
             <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
                 
@@ -336,7 +316,6 @@ export function renderClientUI(hostState) {
         });
     }
     else if (hostState.type === 4) {
-        // Pass "type 4" explicitly so it safely parses the number
         html += `
             <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
                 
@@ -409,7 +388,6 @@ window.submitConsensusPayload = (isSinglePart = false, roundType = null) => {
         if (payload.guess2 === null || payload.guess2 === "") {
             return alert("Please make a prediction for Part 2!");
         }
-        // ONLY parse an integer if this is explicitly a Type 4 question
         if (roundType === 4 && typeof payload.guess2 === 'string') {
             payload.guess2 = parseInt(payload.guess2, 10);
             if (isNaN(payload.guess2)) return alert("Please enter a valid number for Part 2!");
@@ -488,16 +466,15 @@ export function evaluateSoloGuess(source) {
         document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.5rem; font-weight:bold;">❌ 0 POINTS</div><div style="font-size:1.1rem; margin-top:10px;">${fb}</div>`;
     }
 
+    if (state.curIdx + 1 < state.maxRounds) {
+        document.getElementById('feedback').innerHTML += `<div style="margin-top:25px; font-size:1.2rem; color:var(--text-muted); font-weight:bold; text-transform:uppercase;">Next round loading...</div>`;
+    } else {
+        document.getElementById('feedback').innerHTML += `<div style="margin-top:25px; font-size:1.2rem; color:var(--text-muted); font-weight:bold; text-transform:uppercase;">Calculating final scores...</div>`;
+    }
+
     document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
     
-    // Solo Get Ready flow
-    setTimeout(() => {
-        state.curIdx++;
-        if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
-        document.getElementById('feedback').innerHTML = `<div style="font-size:3.5rem; font-weight:900; color:var(--brand); margin-top:40px; margin-bottom:15px;">ROUND ${state.curIdx + 1}</div><div style="font-size:1.8rem; color:#fff; font-weight:bold;">Get Ready...</div>`;
-        document.getElementById('timer').innerText = "";
-        setTimeout(displayPrompt, 3000);
-    }, 4000);
+    state.curIdx++; setTimeout(nextRound, 4000);
 }
 
 // --- MULTIPLAYER SCORING ENGINE ---
@@ -511,7 +488,6 @@ export function evaluateMultiplayerRound(players) {
     const mult = isDouble ? 2 : 1;
     let roundEarnings = {}; 
     
-    // FIX: Always alphabetically sort Player IDs to ensure 100% stable indexing mapping
     const pIds = Object.keys(players || {}).sort();
     pIds.forEach(pid => roundEarnings[pid] = 0);
 
@@ -591,9 +567,16 @@ export function evaluateMultiplayerRound(players) {
         }
     });
 
-    db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'reveal' });
+    fbHTML += `</div>`; 
 
-    document.getElementById('feedback').innerHTML = fbHTML + `</div>`;
+    if (state.curIdx + 1 < state.maxRounds) {
+        fbHTML += `<div style="width:100%; text-align:center; margin-top:25px; font-size:1.2rem; color:var(--text-muted); font-weight:bold; text-transform:uppercase;">Next round loading...</div>`;
+    } else {
+        fbHTML += `<div style="width:100%; text-align:center; margin-top:25px; font-size:1.2rem; color:var(--text-muted); font-weight:bold; text-transform:uppercase;">Calculating final scores...</div>`;
+    }
+
+    db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'reveal' });
+    document.getElementById('feedback').innerHTML = fbHTML;
     
     document.getElementById('score-board').innerHTML = state.rawScores.map((s, i) => `
         <div class="score-pill" style="border-color:${colors[i % colors.length]};">
@@ -602,7 +585,7 @@ export function evaluateMultiplayerRound(players) {
             <div class="p-streak" style="color:${colors[i % colors.length]}; opacity:${state.streaks[i] > 0 ? 1 : 0}">🔥 ${state.streaks[i]}</div>
         </div>`).join('');
 
-    setTimeout(nextRound, 7000); 
+    state.curIdx++; setTimeout(nextRound, 7000); 
 }
 
 function endGameSequence() {
@@ -618,7 +601,6 @@ function endGameSequence() {
         
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             const players = snap.val();
-            // FIX: Stable mapping utilizing sorted pIds for Final Sync
             const pIds = Object.keys(players || {}).sort();
             let results = pIds.map((pid, idx) => {
                 db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: state.rawScores[idx] });
