@@ -6,10 +6,14 @@ export const manifest = {
     id: "fast_math",
     title: "FAST MATH",
     subtitle: "Quick-fire arithmetic battles",
-    hasDaily: false, // <--- ADDED
-    modes: [ ... ], // Keep as is
+    hasDaily: false,
+    modes: [ 
+        { id: "addition", title: "➕ Addition", desc: "Classic 2-digit sums." },
+        { id: "subtraction", title: "➖ Subtraction", desc: "Quick mental differences." },
+        { id: "multiplication", title: "✖️ Multiplication", desc: "Fast-paced times tables." },
+        { id: "division", title: "➗ Division", desc: "Clean mental math quotients." }
+    ],
     levels: [ 
-        // <--- ADDED MEDIUM TO MATCH 3-TIER RULE
         { id: "easy", title: "🟢 Easy (Relaxed)", desc: "20s. Incorrect answer disappears at 10s." },
         { id: "medium", title: "🟡 Medium (Standard)", desc: "15s. Standard speed. No help." },
         { id: "hard", title: "🔴 Hard (Lightning)", desc: "8s. Pure speed. No help." }
