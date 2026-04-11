@@ -172,7 +172,7 @@ function launchGameUI() {
 }
 
 function nextRound() {
-    if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
+    if (state.curIdx >= state.maxRounds) { ; return; }
     state.isProcessing = false;
     
     if (state.isHost) {
@@ -519,7 +519,9 @@ function endGameSequence() {
             db.ref(`rooms/${state.roomCode}/state`).set('finished');
         });
     } else {
-        document.getElementById('winner-text').innerText = `Final Score: ${state.rawScores[0]}`;
+        document.getElementById('winner-text').innerText = `🏆 Final Score: ${state.rawScores[0]} Pts`;
+        document.getElementById('winner-text').style.color = colors[0];
+        document.getElementById('final-grid').innerHTML = ""; // Clears any grid leftovers from Trivia
     }
 
     state.userStats.consensus = state.userStats.consensus || { gamesPlayed: 0, highScore: 0 };
