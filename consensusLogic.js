@@ -61,7 +61,8 @@ export function startGame() {
 }
 
 async function executeFetchLogic() {
-    const allowedTypes = state.isMultiplayer ? [1, 2, 3, 4, 5] : [3, 5]; // Solo filter!
+    // Bulletproof Solo Filter based on actual player count
+    const allowedTypes = state.numPlayers > 1 ? [1, 2, 3, 4, 5] : [3, 5]; 
     state.songs = []; 
     
     if (state.gameState.mode === 'ai_infinite') {
@@ -77,13 +78,13 @@ async function executeFetchLogic() {
         try {
             document.getElementById('feedback-setup').innerText = "Generating absurd AI prompts...";
 
-            // DYNAMIC PROMPT BUILDER: Only feed the AI the rules for the allowed types
+            // Dynamically build the prompt so the AI never sees rules for restricted types
             let typeInstructions = "";
-            if (allowedTypes.includes(1)) typeInstructions += `Type 1: {type: 1, prompt: "Who is most likely to..."}. `;
-            if (allowedTypes.includes(2)) typeInstructions += `Type 2: {type: 2, prompt: "Which is superior?", optA: "...", optB: "..."}. `;
-            if (allowedTypes.includes(3)) typeInstructions += `Type 3: {type: 3, prompt: "Name a...", options: ["#1", "#2", "#3", "Fake"]}. `;
-            if (allowedTypes.includes(4)) typeInstructions += `Type 4: {type: 4, prompt: "Raise your hand if..."}. `;
-            if (allowedTypes.includes(5)) typeInstructions += `Type 5: {type: 5, prompt: "Guess the exact number of...", answer: <int>}. `;
+            if (allowedTypes.includes(1)) typeInstructions += `Type 1 (Who is most likely to): {"type": 1, "prompt": "Who is most likely to..."}. `;
+            if (allowedTypes.includes(2)) typeInstructions += `Type 2 (This or That): {"type": 2, "prompt": "Which is superior?", "optA": "...", "optB": "..."}. `;
+            if (allowedTypes.includes(3)) typeInstructions += `Type 3 (Survey): {"type": 3, "prompt": "Name a...", "options": ["#1", "#2", "#3", "Fake"]}. `;
+            if (allowedTypes.includes(4)) typeInstructions += `Type 4 (Confession): {"type": 4, "prompt": "Raise your hand if..."}. `;
+            if (allowedTypes.includes(5)) typeInstructions += `Type 5 (Guesstimation): {"type": 5, "prompt": "Guess the exact number of...", "answer": <int>}. `;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -95,20 +96,38 @@ async function executeFetchLogic() {
                         content: `Generate ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. Format as JSON object with "questions" array. ${typeInstructions}`
                     }],
                     response_format: { type: "json_object" },
-                    temperature: 1.1 // Add a little chaos to the generations
+                    temperature: 1.1 
                 })
             });
+            
             const data = await response.json();
             let generatedQuestions = JSON.parse(data.choices[0].message.content).questions;
 
-            // SAFETY NET: Force filter any hallucinations that still slip through
-            state.songs = generatedQuestions.filter(q => allowedTypes.includes(q.type));
+            // SAFETY NET: Force type to integer and filter out any hallucinations
+            state.songs = generatedQuestions
+                .map(q => ({ ...q, type: parseInt(q.type) }))
+                .filter(q => allowedTypes.includes(q.type));
             
             if (state.songs.length === 0) throw new Error("AI generated invalid question types.");
+
+            // Fill missing questions locally if the AI filtered out too many
+            if (state.songs.length < state.maxRounds) {
+                const needed = state.maxRounds - state.songs.length;
+                const res = await fetch('db_consensus.json');
+                const offlineData = await res.json();
+                let typeTracker = 0;
+                for(let i=0; i<needed; i++) {
+                    const t = allowedTypes[typeTracker % allowedTypes.length];
+                    const pool = offlineData[`type${t}`];
+                    state.songs.push(pool[Math.floor(Math.random() * pool.length)]);
+                    typeTracker++;
+                }
+            }
 
         } catch(e) {
             console.error(e);
             alert("AI Generation failed or hallucinated. Falling back to Party Pack.");
+            state.songs = [];
             await loadOfflineQuestions(allowedTypes);
         }
     } else {
@@ -171,7 +190,7 @@ function nextRound() {
     tag.style.borderColor = isDouble ? "#ffcc00" : "var(--highlight)";
 
     let subText = "Check your phone to answer!";
-    if(!state.isMultiplayer) subText = q.type === 3 ? "Pick the #1 Survey Answer!" : "Type your closest guess!";
+    if(state.numPlayers === 1) subText = q.type === 3 ? "Pick the #1 Survey Answer!" : "Type your closest guess!";
     
     document.getElementById('feedback').innerHTML = `
         <div style="font-size:2.5rem; font-weight:900; color:#fff; margin-bottom:10px;">${q.prompt}</div>
@@ -180,7 +199,7 @@ function nextRound() {
 
     if (state.isHost) {
         db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'input', type: q.type, qData: q, isDouble: isDouble });
-    } else if (!state.isMultiplayer) {
+    } else if (state.numPlayers === 1) {
         renderSoloUI(q);
     }
 
@@ -294,12 +313,10 @@ function renderSoloUI(q) {
     if (q.type === 3) {
         q.options.forEach((opt, idx) => {
             const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt;
-            // This works because the closure has access to the module's state!
             btn.onclick = () => { state.soloGuess = idx; evaluateSoloGuess(); };
             mcFields.appendChild(btn);
         });
     } else if (q.type === 5) {
-        // We removed the inline state assignment and added a parameter to the function call
         mcFields.innerHTML = `<input type="number" id="solo-num" placeholder="Your Exact Guess" style="width:100%; padding:15px; background:var(--surface); border:2px solid var(--border); border-radius:8px; color:#fff; font-size:1.2rem; outline:none; margin-bottom:10px;">
                               <button class="btn btn-main" onclick="window.activeCartridge.evaluateSoloGuess('num')">SUBMIT</button>`;
     }
@@ -308,7 +325,6 @@ function renderSoloUI(q) {
 export function evaluateSoloGuess(source) {
     if (state.isProcessing) return;
     
-    // Safely grab the DOM value from inside the module
     if (source === 'num') {
         state.soloGuess = document.getElementById('solo-num').value;
         if (state.soloGuess === "") {
