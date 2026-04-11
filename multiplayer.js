@@ -148,6 +148,23 @@ export async function joinRoom() {
             db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}/finalScore`).on('value', scoreSnap => {
                 if (scoreSnap.exists()) document.getElementById('client-final-score').innerText = scoreSnap.val();
             });
+
+            // NEW: Fetch and render the final leaderboard on the client phone
+            db.ref(`rooms/${state.roomCode}/finalLeaderboard`).once('value', lbSnap => {
+                if(lbSnap.exists()) {
+                    let results = lbSnap.val();
+                    let html = `<div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; border:1px solid var(--border);">`;
+                    html += `<div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px; font-weight:bold; text-align:center;">Final Standings</div>`;
+                    results.forEach((p, idx) => {
+                        let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
+                        let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : '#ccc');
+                        html += `<div style="display:flex; justify-content:space-between; padding: 10px 5px; border-bottom: 1px solid #333; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span>${p.score}</span></div>`;
+                    });
+                    html += `</div>`;
+                    const lbContainer = document.getElementById('client-leaderboard-container');
+                    if(lbContainer) lbContainer.innerHTML = html;
+                }
+            });
         }
     });
 
@@ -208,6 +225,9 @@ export async function startMultiplayerGame() {
     document.getElementById('host-lobby-screen').classList.add('hidden');
     
     await db.ref(`rooms/${state.roomCode}`).update({ state: 'playing', currentRound: 1, mode: state.gameState.mode });
+    
+    // NEW: Push a loading phase so client phones update immediately while AI generates
+    await db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'loading' });
 
     db.ref(`rooms/${state.roomCode}/players`).on('value', (snap) => {
         if (!state.isHost || !snap.exists()) return;
