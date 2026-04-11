@@ -136,14 +136,24 @@ async function executeFetchLogic() {
                 const needed = state.maxRounds - state.songs.length;
                 const res = await fetch('db_consensus.json');
                 const offlineData = await res.json();
+                
+                // NEW FIX: Shuffle all the backup pools first
+                allowedTypes.forEach(t => {
+                    if (offlineData[`type${t}`]) {
+                        offlineData[`type${t}`] = offlineData[`type${t}`].sort(() => 0.5 - Math.random());
+                    }
+                });
+
                 let typeTracker = 0;
                 for(let i=0; i<needed; i++) {
                     const t = allowedTypes[typeTracker % allowedTypes.length];
                     const pool = offlineData[`type${t}`];
-                    let rawQ = pool[Math.floor(Math.random() * pool.length)];
                     
-                    // NEW FIX: Explicitly append the type so Firebase doesn't throw an undefined error
-                    state.songs.push({ ...rawQ, type: t }); 
+                    // NEW FIX: Pop the question out so it can't be drawn again
+                    if (pool && pool.length > 0) {
+                        let rawQ = pool.pop();
+                        state.songs.push({ ...rawQ, type: t }); 
+                    }
                     typeTracker++;
                 }
             }
@@ -164,12 +174,25 @@ async function executeFetchLogic() {
 async function loadOfflineQuestions(allowedTypes) {
     const response = await fetch('db_consensus.json');
     const data = await response.json();
+    
+    // NEW FIX: Shuffle every pool so we can draw cards from the top
+    allowedTypes.forEach(t => {
+        if (data[`type${t}`]) {
+            data[`type${t}`] = data[`type${t}`].sort(() => 0.5 - Math.random());
+        }
+    });
+
     let typeTracker = 0;
     
     for (let i = 0; i < state.maxRounds; i++) {
         const type = allowedTypes[typeTracker % allowedTypes.length];
         const pool = data[`type${type}`];
-        state.songs.push(pool[Math.floor(Math.random() * pool.length)]);
+        
+        // NEW FIX: Pop the question out of the pool so it can't be picked again this game
+        if (pool && pool.length > 0) {
+            const rawQ = pool.pop();
+            state.songs.push({ ...rawQ, type: type });
+        }
         typeTracker++;
     }
     state.songs = state.songs.sort(() => 0.5 - Math.random());
