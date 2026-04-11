@@ -226,21 +226,23 @@
 
         /* MODERN PREMIUM MATTE CARDS */
         .game-card {
-            background: #1e1e1e !important; 
-            border: 1px solid rgba(255, 255, 255, 0.05) !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
-            border-radius: 20px !important;
+            background: linear-gradient(145deg, #26262f, #1a1a21) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.12) !important; 
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6) !important;
+            border-radius: 16px !important;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
         }
         
         .game-card:hover {
             transform: translateY(-4px) !important;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8) !important;
+            border: 1px solid rgba(168, 85, 247, 0.5) !important; /* Brand color glow */
         }
+        
         .game-card:active {
             transform: translateY(2px) scale(0.98) !important;
             box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5) !important;
+            border: 1px solid var(--brand) !important;
         }
 
         /* CLEAN SCREEN FADES */
