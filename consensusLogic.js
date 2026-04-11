@@ -282,7 +282,8 @@ export function renderClientUI(hostState) {
             let inner = "";
             snap.forEach(p => {
                 const isMe = p.key === state.myPlayerId;
-                inner += `<button class="mc-btn touch-opt" ${isMe ? 'disabled' : ''} onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
+                // BUG FIX: Removed the 'disabled' attribute. Players can now vote for themselves!
+                inner += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
             });
             container.innerHTML = inner;
         });
@@ -396,10 +397,13 @@ window.submitConsensusPayload = (isSinglePart = false) => {
         if (payload.guess2 === null || payload.guess2 === "") {
             return alert("Please make a prediction for Part 2!");
         }
-        // Force the numeric string to a strict integer, preventing the NaN Firebase crash
+        // BUG FIX: Only force parse to Integer if it's meant to be a number (Type 4)
         if (typeof payload.guess2 === 'string') {
-            payload.guess2 = parseInt(payload.guess2, 10);
-            if (isNaN(payload.guess2)) return alert("Please enter a valid number for Part 2!");
+            // If the string is 'A' or 'B', leave it alone! Otherwise, it's a number prediction.
+            if (payload.guess2 !== 'A' && payload.guess2 !== 'B') {
+                payload.guess2 = parseInt(payload.guess2, 10);
+                if (isNaN(payload.guess2)) return alert("Please enter a valid number for Part 2!");
+            }
         }
     }
 
