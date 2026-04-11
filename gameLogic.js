@@ -440,6 +440,7 @@ export async function executeFetchLogic() {
 function launchGameUI() {
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('play-screen').classList.remove('hidden');
+    document.querySelectorAll('.header-btn').forEach(btn => btn.classList.add('hidden'));
     document.getElementById('guess-artist').classList.toggle('hidden', state.gameState.mode !== 'genre');
     document.getElementById('guess-song').classList.toggle('hidden', state.gameState.mode === 'movie');
     document.getElementById('guess-movie').classList.toggle('hidden', state.gameState.mode !== 'movie');
@@ -731,12 +732,12 @@ export function evaluateGuess(isCorrectMC = null) {
     let fbHTML = ""; const succColor = "var(--success)"; const failColor = "var(--fail)";
 
     if (state.gameState.mode === 'genre' && !state.hasUsedLifeline) {
-        if (artOk && sonOk) fbHTML += `<div style="color:${succColor}; font-size:1.2rem; font-weight:bold;">🔥 PERFECT DOUBLE!</div>`;
-        else if (artOk || sonOk) fbHTML += `<div style="font-size:1.1rem; font-weight:bold; display:flex; justify-content:center; gap:15px;"><span style="color:${artOk ? succColor : failColor}">${artOk ? '✅' : '❌'} ARTIST</span><span style="color:#666;">|</span><span style="color:${sonOk ? succColor : failColor}">${sonOk ? '✅' : '❌'} SONG</span></div>`;
-        else fbHTML += `<div style="color:${failColor}; font-size:1.2rem; font-weight:bold;">❌ INCORRECT</div>`;
+        if (artOk && sonOk) fbHTML += `<div style="color:${succColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">🔥 PERFECT DOUBLE!</div>`;
+        else if (artOk || sonOk) fbHTML += `<div style="font-size:1.1rem; font-weight:bold; display:flex; justify-content:center; gap:15px; margin-bottom:5px;"><span style="color:${artOk ? succColor : failColor}">${artOk ? '✅' : '❌'} ARTIST</span><span style="color:#666;">|</span><span style="color:${sonOk ? succColor : failColor}">${sonOk ? '✅' : '❌'} SONG</span></div>`;
+        else fbHTML += `<div style="color:${failColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div>`;
     } else {
-        if (correct) fbHTML += `<div style="color:${succColor}; font-size:1.2rem; font-weight:bold;">🔥 CORRECT!</div>`;
-        else fbHTML += `<div style="color:${failColor}; font-size:1.2rem; font-weight:bold;">❌ INCORRECT</div>`;
+        if (correct) fbHTML += `<div style="color:${succColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">🔥 CORRECT!</div>`;
+        else fbHTML += `<div style="color:${failColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div>`;
     }
 
     if (correct) {
