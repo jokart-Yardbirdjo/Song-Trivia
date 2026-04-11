@@ -21,11 +21,47 @@ export const manifest = {
     clientUI: "multiple-choice" 
 };
 
-export function resetStats() { alert("Stats reset not needed for Math Test"); }
-export function startDailyChallenge() { alert("Daily mode not enabled for Math Test"); }
-export function handleStop() {}
-export function forceLifeline() {}
-export function shareChallenge() {}
+export function resetStats() { 
+    if(confirm("Are you sure you want to reset your Fast Math lifetime stats? This cannot be undone.")) {
+        // Reset the specific math branch in our unified state tree
+        state.userStats.fast_math = { gamesPlayed: 0, highScore: 0, correctGuesses: 0, totalGuesses: 0 };
+        localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
+        
+        // Update the UI immediately so the user sees the change
+        const hsElement = document.querySelector('#stats-modal .stat-val.p1');
+        if (hsElement) hsElement.innerText = "0";
+        alert("Fast Math stats have been reset.");
+    }
+}
+
+export function shareChallenge() { 
+    // Grab the normalized score (or raw score if you haven't normalized it yet)
+    const currentScore = state.rawScores[0] || 0;
+    const modeName = state.gameState.level.charAt(0).toUpperCase() + state.gameState.level.slice(1);
+    
+    const text = `Yardbird's Fast Math ➕\nI just scored ${currentScore} points on ${modeName} difficulty!\nThink you're faster? Play here:`;
+    const url = `${window.location.origin}${window.location.pathname}`;
+    
+    if (navigator.share) { 
+        navigator.share({ title: "Beat My Math Score!", text: text, url: url }).catch(console.error); 
+    } else { 
+        navigator.clipboard.writeText(text + "\n" + url); 
+        alert("Challenge link copied to clipboard! Paste it to your friends."); 
+    }
+}
+
+// --- INTENTIONALLY DISABLED PLATFORM HOOKS ---
+// Fast Math manifest explicitly sets hasDaily: false, hiding the Daily button.
+export function startDailyChallenge() { 
+    console.warn("Daily Challenge triggered, but Fast Math does not support Daily Mode."); 
+}
+
+// Fast Math uses pure Multiple Choice, so there is no typing phase to "Stop".
+export function handleStop() { return; }
+
+// Fast Math lifelines (wrong answer removal) trigger automatically via time thresholds.
+export function forceLifeline() { return; }
+
 
 function generateMathProblem() {
     let num1, num2, target, operatorStr;
@@ -81,8 +117,13 @@ function generateMathProblem() {
 export function startGame() {
     state.isDailyMode = false;
     state.numPlayers = state.isMultiplayer ? state.numPlayers : 1; 
-    state.timeLimit = state.gameState.level === 'easy' ? 20 : 10; 
-    state.maxRounds = state.gameState.rounds; 
+
+    // 👇 NEW TIMING CALIBRATION 👇
+    if (state.gameState.level === 'easy') state.timeLimit = 20;
+    else if (state.gameState.level === 'medium') state.timeLimit = 15;
+    else state.timeLimit = 8; 
+
+    state.maxRounds = state.gameState.rounds;
 
     state.doubleRounds = [];
     for (let i = 0; i < state.maxRounds; i += 5) {
@@ -183,9 +224,13 @@ function nextRound() {
             db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
         }
 
-        if (state.gameState.level === 'easy' && state.timeLeft === 10) {
+        // 👇 NEW LIFELINE CALIBRATION 👇
+        const helpThreshold = state.gameState.level === 'easy' ? 10 : 5;
+        
+        if (state.gameState.level !== 'hard' && state.timeLeft === helpThreshold) {
             if (state.isMultiplayer && state.isHost) {
                 let removed = false;
+                
                 let newOptions = problem.options.filter(opt => {
                     if (!opt.isCorrect && !removed) { removed = true; return false; }
                     return true;
@@ -287,6 +332,11 @@ export function evaluateMultiplayerRound(players) {
     setTimeout(nextRound, 4000); 
 }
 
+function getNormalizedScore(rawScore) {
+    const maxPossible = state.maxRounds * 250; 
+    return Math.min(1000, Math.round((rawScore / maxPossible) * 1000));
+}
+
 function endGameSequence() {
     document.getElementById('play-screen').classList.add('hidden');
     document.getElementById('final-screen').classList.remove('hidden');
@@ -294,7 +344,12 @@ function endGameSequence() {
     const playlistBox = document.querySelector('.playlist-box');
     if (playlistBox) playlistBox.style.display = 'none'; 
     
-    document.getElementById('final-subtitle').innerText = "Speed & Accuracy Scored";
+    // 👇 ADD SUBTITLE 👇
+    document.getElementById('final-subtitle').innerText = "Scores Normalized to 1000";
+    
+    // 👇 CALCULATE NORMALIZED SCORES 👇
+    const normalizedScores = state.rawScores.map(s => getNormalizedScore(s));
+    const maxScore = Math.max(...normalizedScores);
     
     if (state.isMultiplayer && state.isHost) {
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
@@ -303,8 +358,9 @@ function endGameSequence() {
             let finalResults = [];
             
             pIds.forEach((pid, index) => {
-                finalResults.push({ name: players[pid].name, score: state.rawScores[index], id: pid });
-                db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: state.rawScores[index] });
+                // Use normalizedScores[index] instead of rawScores[index]
+                finalResults.push({ name: players[pid].name, score: normalizedScores[index], id: pid });
+                db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: normalizedScores[index] });
             });
             
             finalResults.sort((a, b) => b.score - a.score); 
@@ -322,16 +378,17 @@ function endGameSequence() {
             db.ref(`rooms/${state.roomCode}/state`).set('finished');
         });
     } else {
-        document.getElementById('winner-text').innerText = `🏆 Final Score: ${state.rawScores[0]} Pts`;
+        // 👇 UPDATE SOLO TEXT 👇
+        document.getElementById('winner-text').innerText = `🏆 Final Score: ${maxScore} Pts`;
         document.getElementById('winner-text').style.color = colors[0];
         document.getElementById('final-grid').innerHTML = "";
     }
    
     state.userStats.fast_math = state.userStats.fast_math || { gamesPlayed: 0, highScore: 0 };
     
-    const currentScore = state.rawScores[0] || 0;
-    if (currentScore > (state.userStats.fast_math.highScore || 0)) {
-        state.userStats.fast_math.highScore = currentScore;
+    // 👇 SAVE THE NORMALIZED HIGH SCORE 👇
+    if (maxScore > (state.userStats.fast_math.highScore || 0)) {
+        state.userStats.fast_math.highScore = maxScore;
     }
 
     state.userStats.fast_math.gamesPlayed++;
