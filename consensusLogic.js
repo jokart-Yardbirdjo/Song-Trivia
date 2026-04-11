@@ -25,16 +25,40 @@ const ROUND_TYPES = {
     5: "Shot In The Dark"
 };
 
+// --- STANDARD CARTRIDGE HOOKS ---
 export function resetStats() {
     if(confirm("Reset Consensus lifetime stats?")) {
         state.userStats.consensus = { gamesPlayed: 0, highScore: 0 };
         localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
     }
 }
-export function startDailyChallenge() { alert("Daily mode not enabled for The Consensus"); }
-export function handleStop() {}
+
+export function startDailyChallenge() { 
+    alert("Daily mode not enabled for The Consensus yet!"); 
+}
+
+export function handleStop() {
+    clearInterval(state.timerId);
+    state.isProcessing = false;
+}
+
 export function forceLifeline() {}
-export function shareChallenge() {}
+
+export function shareChallenge() {
+    const modeName = state.gameState.mode === 'ai_infinite' ? 'Infinite AI' : 'Party Pack';
+    let shareText = `I just scored ${state.rawScores[0]} points in The Consensus (${modeName})! Think you can read the room better?`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: "Yardbird's Games",
+            text: shareText,
+            url: window.location.href
+        }).catch(err => console.log("Share failed:", err));
+    } else {
+        navigator.clipboard.writeText(shareText + " " + window.location.href);
+        alert("Score copied to clipboard!");
+    }
+}
 
 export function startGame() {
     state.isDailyMode = false;
@@ -89,7 +113,7 @@ async function executeFetchLogic() {
                     model: "gpt-4o-mini",
                     messages: [{ 
                         role: "system", 
-                        content: `Generate ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. Format as JSON object with "questions" array. ${typeInstructions}`
+                        content: `Generate ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. You MUST generate an equal number of questions for each allowed type so they are perfectly balanced. Format as JSON object with "questions" array. ${typeInstructions}`
                     }],
                     response_format: { type: "json_object" },
                     temperature: 1.1 
@@ -267,17 +291,23 @@ export function renderClientUI(hostState) {
     else if (hostState.type === 2) {
         html += `
             <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
-                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. Your Pick</div>
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <button id="t2-g1-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'A')">${q.optA}</button>
-                    <button id="t2-g1-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'B')">${q.optB}</button>
+                
+                <div id="t2-part1-container" style="transition: all 0.3s ease;">
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. Your Pick</div>
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <button id="t2-g1-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'A')">${q.optA}</button>
+                        <button id="t2-g1-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'B')">${q.optB}</button>
+                    </div>
                 </div>
                 
-                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
-                <div style="display:flex; gap:10px;">
-                    <button id="t2-g2-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'A')">${q.optA}</button>
-                    <button id="t2-g2-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'B')">${q.optB}</button>
+                <div id="t2-part2-container" style="opacity:0.3; pointer-events:none; transition: all 0.3s ease;">
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
+                    <div style="display:flex; gap:10px;">
+                        <button id="t2-g2-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'A')">${q.optA}</button>
+                        <button id="t2-g2-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'B')">${q.optB}</button>
+                    </div>
                 </div>
+
             </div>`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload()">LOCK IT IN</button>`;
     }
@@ -289,14 +319,20 @@ export function renderClientUI(hostState) {
     else if (hostState.type === 4) {
         html += `
             <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
-                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. The Truth</div>
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <button id="t4-g1-true" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', true)">👍</button>
-                    <button id="t4-g1-false" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', false)">👎</button>
+                
+                <div id="t4-part1-container" style="transition: all 0.3s ease;">
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. The Truth</div>
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <button id="t4-g1-true" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', true)">👍</button>
+                        <button id="t4-g1-false" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', false)">👎</button>
+                    </div>
                 </div>
                 
-                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Prediction</div>
-                <input type="number" id="t4-g2" placeholder="How many 👍 total?" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; outline:none; opacity:0.3; transition: opacity 0.3s;" disabled oninput="window.consensusTempPayload.guess2 = this.value">
+                <div id="t4-part2-container" style="opacity:0.3; pointer-events:none; transition: all 0.3s ease;">
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Prediction</div>
+                    <input type="number" id="t4-g2" placeholder="How many 👍 total?" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; outline:none;" disabled oninput="window.consensusTempPayload.guess2 = this.value">
+                </div>
+
             </div>`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload()">LOCK IT IN</button>`;
     }
@@ -312,33 +348,60 @@ window.setConsensusLocalGuess = (part, value) => {
     window.consensusTempPayload[part] = value;
     if (window.activeCartridge.manifest.id !== 'consensus') return; 
     
+    // --- TYPE 2 FLOW ---
     if(part === 'guess1' && (value === 'A' || value === 'B')) { 
         document.getElementById('t2-g1-A').classList.remove('active'); document.getElementById('t2-g1-B').classList.remove('active');
         document.getElementById(`t2-g1-${value}`).classList.add('active');
+        
+        // Lock Part 1, Unlock Part 2
+        document.getElementById('t2-part1-container').style.opacity = '0.5';
+        document.getElementById('t2-part1-container').style.pointerEvents = 'none';
+        document.getElementById('t2-part2-container').style.opacity = '1';
+        document.getElementById('t2-part2-container').style.pointerEvents = 'auto';
+
     } else if(part === 'guess2' && (value === 'A' || value === 'B')) { 
         document.getElementById('t2-g2-A').classList.remove('active'); document.getElementById('t2-g2-B').classList.remove('active');
         document.getElementById(`t2-g2-${value}`).classList.add('active');
+    
+    // --- TYPE 4 FLOW ---
     } else if(part === 'guess1' && typeof value === 'boolean') { 
-        // Thumbs Up / Down
         document.getElementById('t4-g1-true').classList.remove('active'); document.getElementById('t4-g1-false').classList.remove('active');
         document.getElementById(`t4-g1-${value}`).classList.add('active');
         
-        // Sequentially unlock the numeric input field for Part 2!
+        // Lock Part 1, Unlock Part 2
+        document.getElementById('t4-part1-container').style.opacity = '0.5';
+        document.getElementById('t4-part1-container').style.pointerEvents = 'none';
+        document.getElementById('t4-part2-container').style.opacity = '1';
+        document.getElementById('t4-part2-container').style.pointerEvents = 'auto';
+
+        // Unlock and Auto-focus the prediction field for ultimate speed
         const predictInput = document.getElementById('t4-g2');
         if (predictInput) {
             predictInput.disabled = false;
-            predictInput.style.opacity = '1';
+            predictInput.focus();
         }
     }
 };
 
 window.submitConsensusPayload = (isSinglePart = false) => {
     const payload = window.consensusTempPayload;
-    if (payload.guess1 === null) return alert(isSinglePart ? "Please make a selection!" : "Please select an option for Part 1!");
-    if (!isSinglePart && payload.guess2 === null) return alert("Please make a prediction for Part 2!");
     
-    // Safety for the numeric input strings
-    if (payload.guess2 !== null && typeof payload.guess2 === 'string') payload.guess2 = parseInt(payload.guess2);
+    // 1. Validate Part 1
+    if (payload.guess1 === null || payload.guess1 === "") {
+        return alert(isSinglePart ? "Please make a selection!" : "Please select an option for Part 1!");
+    }
+
+    // 2. Safely Validate Part 2
+    if (!isSinglePart) {
+        if (payload.guess2 === null || payload.guess2 === "") {
+            return alert("Please make a prediction for Part 2!");
+        }
+        // Force the numeric string to a strict integer, preventing the NaN Firebase crash
+        if (typeof payload.guess2 === 'string') {
+            payload.guess2 = parseInt(payload.guess2, 10);
+            if (isNaN(payload.guess2)) return alert("Please enter a valid number for Part 2!");
+        }
+    }
 
     payload.status = 'locked'; 
     db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update(payload);
