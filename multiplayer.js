@@ -12,13 +12,26 @@ export function handleHostSetup() {
 
     hideModal('multiplayer-modal');
     document.getElementById('setup-screen').classList.remove('hidden');
+    
+    // Setup the main button
     document.getElementById('start-btn-top').innerText = "▶ CREATE MULTIPLAYER ROOM";
     document.getElementById('start-btn-top').onclick = createRoom;
-    document.getElementById('daily-btn-top').parentElement.classList.add('hidden'); 
     
-     
-    document.getElementById('cancel-setup-btn').classList.remove('hidden');
+    // Hide Solo/Daily UI elements to standardize the screen
+    const dailyContainer = document.getElementById('daily-btn-top').parentElement;
+    if (dailyContainer) dailyContainer.classList.add('hidden');
+    
+    const separator = document.querySelector('#setup-screen .separator-line');
+    if (separator) separator.classList.add('hidden'); 
+    
+    // Hide the header navigation (Hamburger & Stats)
+    document.getElementById('menu-btn').classList.add('hidden');
     document.getElementById('stats-btn').classList.add('hidden');
+    
+    // Update our single escape button text
+    const backBtn = document.getElementById('back-to-main-btn');
+    if (backBtn) backBtn.innerText = "CANCEL MULTIPLAYER";
+    
     state.isMultiplayer = true;
     state.isHost = true;
 }
