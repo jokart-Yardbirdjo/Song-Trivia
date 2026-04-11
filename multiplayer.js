@@ -16,8 +16,7 @@ export function handleHostSetup() {
     document.getElementById('start-btn-top').onclick = createRoom;
     document.getElementById('daily-btn-top').parentElement.classList.add('hidden'); 
     
-    // NEW FIX: Target the parent wrapper directly instead of looking for the deleted player group!
-    document.getElementById('players-rounds-area').classList.add('hidden'); 
+    // FIX #1: Removed the line that hides the rounds box, so it is always visible!
     
     document.getElementById('cancel-setup-btn').classList.remove('hidden');
     document.getElementById('stats-btn').classList.add('hidden');
@@ -30,8 +29,6 @@ export function handleJoinScreen() {
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('join-screen').classList.remove('hidden');
     
-    // THE NUCLEAR FIX: Tag the entire body as a client. 
-    // CSS will now physically block the buttons from appearing.
     document.body.classList.add('client-mode');
 
     state.isMultiplayer = true;
@@ -55,7 +52,7 @@ export async function createRoom() {
     await db.ref(`rooms/${state.roomCode}`).set({
         state: 'lobby',
         settings: state.gameState,
-        cartridgeId: state.activeCartridgeId, // <--- ADD THIS LINE!
+        cartridgeId: state.activeCartridgeId, 
         createdAt: firebase.database.ServerValue.TIMESTAMP
     });
 
@@ -123,13 +120,13 @@ export async function joinRoom() {
     waitScreen.innerHTML = `<h2 style="color:var(--brand);">You're in!</h2><p style="font-size:1.2rem;">Look at the big screen.</p>`;
     document.querySelector('.container').appendChild(waitScreen);
 
-    // Dynamic Game Start
-    db.ref(`rooms/${state.roomCode}/state`).on('value', (snap) => {
+    // FIX #2: Await the cartridge ID before showing the play screen to avoid UI flashes
+    db.ref(`rooms/${state.roomCode}/state`).on('value', async (snap) => {
         if (!snap.exists()) { location.reload(); }
         else if (snap.val() === 'playing') {
-            db.ref(`rooms/${state.roomCode}/cartridgeId`).once('value', cartSnap => {
-                if(cartSnap.exists() && window.loadCartridge) window.loadCartridge(cartSnap.val());
-            });
+            const cartSnap = await db.ref(`rooms/${state.roomCode}/cartridgeId`).once('value');
+            if(cartSnap.exists() && window.loadCartridge) window.loadCartridge(cartSnap.val());
+            
             document.getElementById('client-wait-screen').classList.add('hidden');
             document.getElementById('client-play-screen').classList.remove('hidden');
         } else if (snap.val() === 'finished') {
@@ -141,7 +138,6 @@ export async function joinRoom() {
         }
     });
 
-    // 1. THE LIFELINE LISTENER: Wakes up instantly when Host pushes Multiple Choice
     db.ref(`rooms/${state.roomCode}/currentMC`).on('value', mcSnap => {
         if(mcSnap.exists()) {
             document.getElementById('client-text-inputs').classList.add('hidden');
@@ -149,39 +145,33 @@ export async function joinRoom() {
         }
     });
 
-    // 2. THE AUTO-WAKEUP LISTENER: Resets the phone perfectly for every new round
+    // FIX #2 Continued: Force text boxes to stay hidden unless strictly Song Trivia
     db.ref(`rooms/${state.roomCode}/currentRound`).on('value', snap => {
         if(snap.exists() && document.getElementById('client-status')) {
             document.getElementById('client-status').innerText = `ROUND ${snap.val()}`;
             
-            // Wake phone up, clear old UI
             document.getElementById('client-locked-screen').classList.add('hidden');
             document.getElementById('client-mc-inputs').classList.add('hidden');
+            if (document.getElementById('client-consensus-ui')) document.getElementById('client-consensus-ui').innerHTML = '';
             
-            // 👇 ADD THIS LINE TO CLEAR CUSTOM CARTRIDGE UIs 👇
-            if (document.getElementById('client-consensus-ui')) document.getElementById('client-consensus-ui').innerHTML = '';    
-
-            // Only show text boxes if the active game is Song Trivia!
-            if (window.activeCartridge && window.activeCartridge.manifest.id === 'song_trivia') {
+            if (state.activeCartridgeId === 'song_trivia') {
                 document.getElementById('client-text-inputs').classList.remove('hidden');
+            } else {
+                document.getElementById('client-text-inputs').classList.add('hidden');
             }
             
-            // Wipe old answers from the screen
             if(document.getElementById('client-guess-artist')) document.getElementById('client-guess-artist').value = '';
             if(document.getElementById('client-guess-song')) document.getElementById('client-guess-song').value = '';
             if(document.getElementById('client-guess-movie')) document.getElementById('client-guess-movie').value = '';
 
-            // Reset Firebase status so the TV knows you are ready
             db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({ status: 'guessing', guess: null });
         }
     });
 
-    // Sync Timer
     db.ref(`rooms/${state.roomCode}/timeLeft`).on('value', snap => {
         if(snap.exists() && document.getElementById('client-timer-display')) document.getElementById('client-timer-display').innerText = snap.val();
     });
 
-    // Sync Math Target Prompts
     db.ref(`rooms/${state.roomCode}/currentPrompt`).on('value', snap => {
         const promptDiv = document.getElementById('client-prompt');
         if (snap.exists() && promptDiv) {
@@ -191,16 +181,13 @@ export async function joinRoom() {
             promptDiv.classList.add('hidden');
         }
     });
-    // 3. THE DYNAMIC CARTRIDGE UI LISTENER (For The Consensus & Future Games)
+    
+    // Dynamic Cartridge Listener
     db.ref(`rooms/${state.roomCode}/hostState`).on('value', snap => {
         if (snap.exists() && window.activeCartridge && window.activeCartridge.renderClientUI) {
-            
-            // 1. Hide the default Song Trivia / Fast Math inputs
             document.getElementById('client-text-inputs').classList.add('hidden');
             document.getElementById('client-mc-inputs').classList.add('hidden');
             document.getElementById('client-locked-screen').classList.add('hidden');
-            
-            // 2. Pass the Firebase payload directly to the active Cartridge
             window.activeCartridge.renderClientUI(snap.val());
         }
     });
@@ -211,7 +198,7 @@ export async function startMultiplayerGame() {
     
     await db.ref(`rooms/${state.roomCode}`).update({ state: 'playing', currentRound: 1, mode: state.gameState.mode });
 
-    // The normal host listener (just waits for everyone to lock in)
+    // Host checks lock statuses here!
     db.ref(`rooms/${state.roomCode}/players`).on('value', (snap) => {
         if (!state.isHost || !snap.exists()) return;
         
@@ -247,32 +234,24 @@ export async function cancelActiveGame() {
 }
 
 export function submitClientTextGuess() {
-    // 1. Grab what the player typed
     const artist = document.getElementById('client-guess-artist').value.trim();
     const song = document.getElementById('client-guess-song').value.trim();
     const movie = document.getElementById('client-guess-movie').value.trim();
-    
-    // 2. Note how fast they answered
     const currentTime = parseInt(document.getElementById('client-timer-display').innerText) || 0;
     
-    // 3. Push it to Firebase so the Host (TV) can grade it!
     db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({
         guess: { isMC: false, artist: artist, song: song, movie: movie, time: currentTime },
         status: 'locked'
     });
     
-    // 4. Hide the text boxes and show the "Locked" screen
     document.getElementById('client-text-inputs').classList.add('hidden');
     document.getElementById('client-locked-screen').classList.remove('hidden');
-    
-    // 5. Clear the text boxes so they are empty for the next round
     document.getElementById('client-guess-artist').value = '';
     document.getElementById('client-guess-song').value = '';
     document.getElementById('client-guess-movie').value = '';
 }
 
 export function requestClientLifeline() {
-    // The phone secretly grabs the pre-generated buttons from the background!
     db.ref(`rooms/${state.roomCode}/roundMC`).once('value', snap => {
         if (snap.exists()) {
             document.getElementById('client-text-inputs').classList.add('hidden');
