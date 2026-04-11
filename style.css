@@ -166,7 +166,18 @@
         }    
 
         /* PLAY SCREEN */
-        .player-tag { font-size: 1.2rem; font-weight: 800; padding: 12px; border-radius: 12px; margin-bottom: 10px; text-transform: uppercase; border: 2px solid transparent; transition: all 0.4s ease; }
+        .player-tag { 
+            font-size: 1.1rem; 
+            font-weight: 800; 
+            padding: 12px; 
+            border-radius: 12px; 
+            margin-bottom: 10px; 
+            text-transform: uppercase; 
+            border: 2px solid var(--border) !important; /* Force standard border */
+            color: var(--highlight) !important; /* Force standard text color */
+            transition: all 0.4s ease; 
+            background: var(--surface);
+        }
         .timer-display { font-size: 3.5rem; font-weight: 900; margin: 5px 0; font-family: 'Courier New', monospace; transition: color 0.3s; color: var(--highlight); }
         
         .score-bar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
