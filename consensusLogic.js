@@ -6,15 +6,13 @@ export const manifest = {
     id: "consensus",
     title: "THE CONSENSUS",
     subtitle: "A Social Party Game",
-    hasDaily: false,
     modes: [
         { id: "party_pack", title: "📦 Party Pack", desc: "Play with classic built-in questions." },
         { id: "ai_infinite", title: "✨ Infinite AI", desc: "Generate unique, absurd prompts using OpenAI." }
     ],
     levels: [
         { id: "easy", title: "🟢 Casual", desc: "30s rounds. Relaxed pacing." },
-        { id: "medium", title: "🟡 Standard", desc: "20s rounds. Normal debating time." },
-        { id: "hard", title: "🔴 Speedrun", desc: "10s rounds. Pure chaos." }
+        { id: "hard", title: "🔴 Speedrun", desc: "15s rounds. Pure chaos." }
     ],
     clientUI: "dynamic"
 };
@@ -82,7 +80,7 @@ async function executeFetchLogic() {
             if (allowedTypes.includes(2)) typeInstructions += `Type 2 (This or That): {"type": 2, "prompt": "Which is superior?", "optA": "...", "optB": "..."}. `;
             if (allowedTypes.includes(3)) typeInstructions += `Type 3 (Survey): {"type": 3, "prompt": "Name a...", "options": ["#1", "#2", "#3", "Fake"]}. `;
             if (allowedTypes.includes(4)) typeInstructions += `Type 4 (Confession): {"type": 4, "prompt": "Raise your hand if..."}. `;
-            if (allowedTypes.includes(5)) typeInstructions += `Type 5 (Guesstimation): {"type": 5, "prompt": "Guess the exact number of...", "answer": <int>}. `;
+            if (allowedTypes.includes(5)) typeInstructions += `Type 5 (Guesstimation): {"type": 5, "prompt": "A factual numeric guess question...", "answer": <int>}. Important: DO NOT generate questions about how many jellybeans (or objects) fit inside a container. Prioritize variety like speed, weight, population, time, distance, or cost. `;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -91,8 +89,7 @@ async function executeFetchLogic() {
                     model: "gpt-4o-mini",
                     messages: [{ 
                         role: "system", 
-                        // 👇 ADD THE "EQUAL DISTRIBUTION" COMMAND HERE 👇
-                        content: `Generate ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. You MUST generate an equal number of questions for each allowed type so they are perfectly balanced. Format as JSON object with "questions" array. ${typeInstructions}`
+                        content: `Generate ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. Format as JSON object with "questions" array. ${typeInstructions}`
                     }],
                     response_format: { type: "json_object" },
                     temperature: 1.1 
@@ -151,8 +148,6 @@ async function loadOfflineQuestions(allowedTypes) {
 function launchGameUI() {
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('play-screen').classList.remove('hidden');
-    
-    document.querySelectorAll('.header-btn').forEach(btn => btn.classList.add('hidden'));
     document.getElementById('guess-fields').classList.add('hidden');
     document.getElementById('btn-container').classList.add('hidden');
     document.getElementById('reveal-art').style.display = 'none';
@@ -172,13 +167,11 @@ function launchGameUI() {
 }
 
 function nextRound() {
-    if (state.curIdx >= state.maxRounds) { ; return; }
+    if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
     state.isProcessing = false;
     
     if (state.isHost) {
-        document.getElementById('score-board').innerHTML = ''; // Keep clean during prompts
-        
-        // FIX #1: Update current round in Firebase so phones sync!
+        document.getElementById('score-board').innerHTML = ''; 
         db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
         
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
@@ -244,6 +237,8 @@ export function renderClientUI(hostState) {
     const promptDiv = document.getElementById('client-prompt');
     if (!container) return; 
     
+    window.consensusTempPayload = { guess1: null, guess2: null }; 
+
     if (hostState.phase === 'reveal' || hostState.phase === 'gameover') {
         if(promptDiv) promptDiv.innerText = "";
         container.innerHTML = `<div style="font-size:1.5rem; color:var(--text-muted); font-weight:bold; margin-top:40px;">Look at the TV!</div>`;
@@ -263,66 +258,92 @@ export function renderClientUI(hostState) {
             let inner = "";
             snap.forEach(p => {
                 const isMe = p.key === state.myPlayerId;
-                inner += `<button class="mc-btn" ${isMe ? 'disabled' : ''} onclick="submitConsensusGuess('guess1', '${p.key}')">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
+                inner += `<button class="mc-btn touch-opt" ${isMe ? 'disabled' : ''} onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
             });
             container.innerHTML = inner;
         });
         return; 
     } 
     else if (hostState.type === 2) {
-        html += `<div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
-                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. Your Pick</div>
-                    <select id="t2-g1" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; margin-bottom:15px; outline:none;">
-                        <option value="" disabled selected>Select your answer...</option>
-                        <option value="A">${q.optA}</option>
-                        <option value="B">${q.optB}</option>
-                    </select>
-                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
-                    <select id="t2-g2" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; outline:none;">
-                        <option value="" disabled selected>What will the majority pick?</option>
-                        <option value="A">${q.optA}</option>
-                        <option value="B">${q.optB}</option>
-                    </select>
-                </div>`;
-        html += `<button class="btn btn-main" onclick="submitConsensusGuess({guess1: document.getElementById('t2-g1').value, guess2: document.getElementById('t2-g2').value})">LOCK IT IN</button>`;
+        html += `
+            <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
+                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. Your Pick</div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button id="t2-g1-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'A')">${q.optA}</button>
+                    <button id="t2-g1-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'B')">${q.optB}</button>
+                </div>
+                
+                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
+                <div style="display:flex; gap:10px;">
+                    <button id="t2-g2-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'A')">${q.optA}</button>
+                    <button id="t2-g2-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'B')">${q.optB}</button>
+                </div>
+            </div>`;
+        html += `<button class="btn btn-main" onclick="submitConsensusPayload()">LOCK IT IN</button>`;
     }
     else if (hostState.type === 3) {
         q.options.forEach((opt, idx) => {
-            html += `<button class="mc-btn" onclick="submitConsensusGuess('guess1', ${idx})">${opt}</button>`;
+            html += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', ${idx}); submitConsensusPayload(true)">${opt}</button>`;
         });
     }
     else if (hostState.type === 4) {
-        html += `<div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
-                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. The Truth</div>
-                    <select id="t4-g1" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; margin-bottom:15px; outline:none;">
-                        <option value="" disabled selected>Have you done it?</option>
-                        <option value="true">🖐️ Yes, I have</option>
-                        <option value="false">No / Skip</option>
-                    </select>
-                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
-                    <input type="number" id="t4-g2" placeholder="How many total hands?" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; outline:none;">
-                </div>`;
-        html += `<button class="btn btn-main" onclick="submitConsensusGuess({guess1: document.getElementById('t4-g1').value === 'true', guess2: document.getElementById('t4-g2').value})">LOCK IT IN</button>`;
+        html += `
+            <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
+                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. The Truth</div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button id="t4-g1-true" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', true)">👍</button>
+                    <button id="t4-g1-false" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', false)">👎</button>
+                </div>
+                
+                <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Prediction</div>
+                <input type="number" id="t4-g2" placeholder="How many 👍 total?" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; outline:none; opacity:0.3; transition: opacity 0.3s;" disabled oninput="window.consensusTempPayload.guess2 = this.value">
+            </div>`;
+        html += `<button class="btn btn-main" onclick="submitConsensusPayload()">LOCK IT IN</button>`;
     }
     else if (hostState.type === 5) {
-        html += `<input type="number" id="cons-num" placeholder="Your Exact Guess" style="margin-bottom:15px; width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.2rem; outline:none; text-align:center;">`;
-        html += `<button class="btn btn-main" onclick="submitConsensusGuess('guess1', document.getElementById('cons-num').value)">SUBMIT</button>`;
+        html += `<input type="number" id="cons-num" placeholder="Your Exact Guess" style="margin-bottom:15px; width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.2rem; outline:none; text-align:center;" oninput="window.consensusTempPayload.guess1 = this.value">`;
+        html += `<button class="btn btn-main" onclick="submitConsensusPayload(true)">SUBMIT</button>`;
     }
 
     container.innerHTML = html;
 }
 
-window.submitConsensusGuess = (payload, optionalVal) => {
-    if (typeof payload === 'object') {
-        if (!payload.guess1 && payload.guess1 !== false && payload.guess1 !== 0) return alert("Please select an option for Part 1!");
-        if (!payload.guess2 && payload.guess2 !== false && payload.guess2 !== 0) return alert("Please enter a prediction for Part 2!");
-        payload.status = 'locked'; 
-        db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update(payload);
-    } else {
-        if (!optionalVal && optionalVal !== 0) return alert("Please enter a value!");
-        db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({ [payload]: optionalVal, status: 'locked' }); 
+window.setConsensusLocalGuess = (part, value) => {
+    window.consensusTempPayload[part] = value;
+    if (window.activeCartridge.manifest.id !== 'consensus') return; 
+    
+    if(part === 'guess1' && (value === 'A' || value === 'B')) { 
+        document.getElementById('t2-g1-A').classList.remove('active'); document.getElementById('t2-g1-B').classList.remove('active');
+        document.getElementById(`t2-g1-${value}`).classList.add('active');
+    } else if(part === 'guess2' && (value === 'A' || value === 'B')) { 
+        document.getElementById('t2-g2-A').classList.remove('active'); document.getElementById('t2-g2-B').classList.remove('active');
+        document.getElementById(`t2-g2-${value}`).classList.add('active');
+    } else if(part === 'guess1' && typeof value === 'boolean') { 
+        // Thumbs Up / Down
+        document.getElementById('t4-g1-true').classList.remove('active'); document.getElementById('t4-g1-false').classList.remove('active');
+        document.getElementById(`t4-g1-${value}`).classList.add('active');
+        
+        // Sequentially unlock the numeric input field for Part 2!
+        const predictInput = document.getElementById('t4-g2');
+        if (predictInput) {
+            predictInput.disabled = false;
+            predictInput.style.opacity = '1';
+        }
     }
-    document.getElementById('client-consensus-ui').innerHTML = `<h2 style="color:var(--success); font-size:2.5rem; margin-top:30px;">Locked In!</h2><p style="color:var(--text-muted);">Look at the TV.</p>`;
+};
+
+window.submitConsensusPayload = (isSinglePart = false) => {
+    const payload = window.consensusTempPayload;
+    if (payload.guess1 === null) return alert(isSinglePart ? "Please make a selection!" : "Please select an option for Part 1!");
+    if (!isSinglePart && payload.guess2 === null) return alert("Please make a prediction for Part 2!");
+    
+    // Safety for the numeric input strings
+    if (payload.guess2 !== null && typeof payload.guess2 === 'string') payload.guess2 = parseInt(payload.guess2);
+
+    payload.status = 'locked'; 
+    db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update(payload);
+    
+    document.getElementById('client-consensus-ui').innerHTML = `<h2 style="color:var(--success); font-size:2.5rem; margin-top:30px;">🔐 Locked In!</h2><p style="color:var(--text-muted);">Look at the TV.</p>`;
 };
 
 // --- SOLO UI LOGIC ---
@@ -376,8 +397,7 @@ export function evaluateSoloGuess(source) {
         else if (diff <= q.answer * 0.1) roundPts = 200 * mult; 
         else if (diff <= q.answer * 0.25) roundPts = 100 * mult; 
         
-        const guessDisplay = state.soloGuess ? state.soloGuess : "Time's Up";
-        fb = `Actual Answer: <strong style="color:var(--brand)">${q.answer}</strong> (You guessed ${guessDisplay})`;
+        fb = `Actual Answer: <strong style="color:var(--brand)">${q.answer}</strong> (You guessed ${state.soloGuess || 0})`;
     }
 
     if (roundPts > 0) {
@@ -389,7 +409,7 @@ export function evaluateSoloGuess(source) {
     } else {
         state.streaks[0] = 0;
         sfxBuzzer.play().catch(()=>{});
-        document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div><div style="font-size:1.1rem; margin-top:10px;">${fb}</div>`;
+        document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.5rem; font-weight:bold;">❌ 0 POINTS</div><div style="font-size:1.1rem; margin-top:10px;">${fb}</div>`;
     }
 
     document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
@@ -414,16 +434,22 @@ export function evaluateMultiplayerRound(players) {
     if (q.type === 1) {
         let votes = {};
         pIds.forEach(pid => { if(players[pid].guess1) votes[players[pid].guess1] = (votes[players[pid].guess1] || 0) + 1; });
+        
         let voteGroups = {};
         Object.keys(votes).forEach(pid => { let v = votes[pid]; if(!voteGroups[v]) voteGroups[v] = []; voteGroups[v].push(pid); });
+        
         let sorted = Object.keys(voteGroups).map(Number).sort((a,b) => b - a);
 
         if(sorted.length > 0) {
-            let names = voteGroups[sorted[0]].map(pid => players[pid]?.name || 'Nobody').join(" & ");
-            revealHTML = `Most Voted: <strong style="color:var(--brand)">${names}</strong> (${sorted[0]} votes)`;
-            if(sorted[0]) voteGroups[sorted[0]].forEach(pid => roundEarnings[pid] = 300 * mult);
-            if(sorted[1]) voteGroups[sorted[1]].forEach(pid => roundEarnings[pid] = 200 * mult);
-            if(sorted[2]) voteGroups[sorted[2]].forEach(pid => roundEarnings[pid] = 100 * mult);
+            let topTierIds = voteGroups[sorted[0]];
+            let names = topTierIds.map(pid => players[pid]?.name || 'Nobody').join(" & ");
+            let tieTxt = topTierIds.length > 1 ? " (It's a tie!)" : "";
+            
+            revealHTML = `Most Voted${tieTxt}: <strong style="color:var(--brand)">${names}</strong> (${sorted[0]} votes)`;
+            
+            if(sorted[0] !== undefined) voteGroups[sorted[0]].forEach(pid => roundEarnings[pid] = 300 * mult);
+            if(sorted[1] !== undefined) voteGroups[sorted[1]].forEach(pid => roundEarnings[pid] = 200 * mult);
+            if(sorted[2] !== undefined) voteGroups[sorted[2]].forEach(pid => roundEarnings[pid] = 100 * mult);
         } else revealHTML = `Most Voted: Nobody`;
     } 
     else if (q.type === 2) {
@@ -444,7 +470,7 @@ export function evaluateMultiplayerRound(players) {
     else if (q.type === 4) {
         let raised = 0;
         pIds.forEach(pid => { if(players[pid].guess1 === true) raised++; });
-        revealHTML = `Total Hands Raised: <strong style="color:var(--brand)">${raised}</strong>`;
+        revealHTML = `👍 Total Thumbs Up: <strong style="color:var(--brand)">${raised}</strong>`;
         pIds.forEach(pid => { if (parseInt(players[pid].guess2) === raised) roundEarnings[pid] = 300 * mult; });
     }
     else if (q.type === 5) {
@@ -463,6 +489,8 @@ export function evaluateMultiplayerRound(players) {
             if(sorted[2] !== undefined) diffGroups[sorted[2]].forEach(pid => roundEarnings[pid] = 100 * mult);
         }
     }
+
+    document.getElementById('score-board').innerHTML = ''; 
 
     let fbHTML = `<div style="font-size:1.3rem; margin-bottom:15px; color:#fff;">${revealHTML}</div><div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">`;
     pIds.forEach((pid, index) => {
@@ -501,6 +529,7 @@ function endGameSequence() {
     
     if (state.isHost) {
         db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'gameover' });
+        
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             const players = snap.val();
             let results = Object.keys(players).map((pid, idx) => {
@@ -509,19 +538,17 @@ function endGameSequence() {
             });
             
             results.sort((a, b) => b.score - a.score);
-            let podium = `<div style="margin-top: 15px; text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border);"><h3 style="margin-top:0; color:var(--brand); text-align:center; text-transform:uppercase; margin-bottom:15px;">Final Standings</h3>`;
+            let podium = `<div style="text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">`;
             results.forEach((p, idx) => {
                 let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
                 let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : '#ccc');
-                podium += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid #333; font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="font-family:'Courier New', monospace;">${p.score}</span></div>`;
+                podium += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid #333; font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span>${p.score}</span></div>`;
             });
             document.getElementById('winner-text').innerHTML = podium + `</div>`;
             db.ref(`rooms/${state.roomCode}/state`).set('finished');
         });
     } else {
-        document.getElementById('winner-text').innerText = `🏆 Final Score: ${state.rawScores[0]} Pts`;
-        document.getElementById('winner-text').style.color = colors[0];
-        document.getElementById('final-grid').innerHTML = ""; // Clears any grid leftovers from Trivia
+        document.getElementById('winner-text').innerText = `Final Score: ${state.rawScores[0]}`;
     }
 
     state.userStats.consensus = state.userStats.consensus || { gamesPlayed: 0, highScore: 0 };
