@@ -1,6 +1,5 @@
 // ui.js
 import { state, subOptions } from './state.js';
-import { startDailyChallenge } from './gameLogic.js';
 
 export function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
 export function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
@@ -11,29 +10,23 @@ export function setMode(mode, element) {
     state.gameState.mode = mode;
 
     const customInput = document.getElementById('custom-input');
-    const subArea = document.getElementById('sub-selection-area'); // We define it here now
 
-    // Safe check: Only run sub-options logic if this mode uses them (like Song Trivia)
     if (subOptions[mode]) {
-        subArea.classList.remove('hidden'); // Show it if it has sub-options
         state.gameState.sub = subOptions[mode][0]; 
         document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
         customInput.classList.add('hidden');
         customInput.placeholder = "Separate multiple entries with a comma";
         customInput.type = "text";
         renderSubPills();
-    } else {
-        subArea.classList.add('hidden'); // Hide it completely for Fast Math & Consensus
     }
 
-    // Consensus Hook: Show API Key input if AI Infinite is selected
     if (mode === 'ai_infinite') {
         customInput.classList.remove('hidden');
         customInput.placeholder = "Paste your OpenAI API Key...";
-        customInput.type = "password"; // Hides the key visually
+        customInput.type = "password"; 
         const savedKey = localStorage.getItem('consensus_openai_key');
         if (savedKey) customInput.value = savedKey;
-    } else if (mode === 'party_pack' || !subOptions[mode]) {
+    } else if (mode === 'party_pack') {
         customInput.classList.add('hidden');
     }
 
@@ -50,9 +43,9 @@ export function setMode(mode, element) {
 
 export function renderSubPills() {
     const container = document.getElementById('sub-pills');
+    if(!container) return; // Cartridges like Consensus might not have this
     container.innerHTML = '';
     
-    // Safety check just in case subOptions isn't defined for the current mode
     if (!subOptions[state.gameState.mode]) return;
 
     subOptions[state.gameState.mode].forEach(opt => {
@@ -126,7 +119,6 @@ export function renderPlaylist(platform) {
 export function buildSetupScreen(manifest) {
     document.getElementById('main-title').innerText = manifest.title;
     
-    // Rule 6: Select Game Mode (Consistent container, dynamic options)
     const modeGroup = document.getElementById('mode-group');
     modeGroup.innerHTML = ''; 
     manifest.modes.forEach((mode, index) => {
@@ -137,7 +129,6 @@ export function buildSetupScreen(manifest) {
         modeGroup.appendChild(card);
     });
 
-    // Rule 9: Select Difficulty (Consistent container, dynamic definitions)
     const levelGroup = document.getElementById('level-group');
     levelGroup.innerHTML = '';
     manifest.levels.forEach((lvl, index) => {
@@ -149,24 +140,17 @@ export function buildSetupScreen(manifest) {
         levelGroup.appendChild(card);
     });
 
-    // Rule 8: Rounds are universally consistent and always visible
-    document.getElementById('players-rounds-area').classList.remove('hidden');
-
-    // Rule 4: Daily Mode is optional. We check if the manifest declares it.
-    const dailyContainer = document.getElementById('daily-btn-top').parentElement;
-    if (dailyContainer) {
-        dailyContainer.classList.toggle('hidden', !manifest.hasDaily);
-        // Also hide the separator line if Daily is hidden
-        dailyContainer.nextElementSibling.classList.toggle('hidden', !manifest.hasDaily); 
-    }
-
-    // Initialize default states (This also triggers Rule 7: Sub-modes)
     state.gameState.mode = manifest.modes[0].id;
     state.gameState.level = manifest.levels[0].id;
     
-    // Simulate clicking the first mode to properly show/hide the Era/Genre sub-selection
-    window.setMode(manifest.modes[0].id, modeGroup.firstChild);
+    const isSongTrivia = manifest.id === 'song_trivia';
+    document.getElementById('sub-selection-area').classList.toggle('hidden', !isSongTrivia);
+    document.getElementById('players-rounds-area').classList.remove('hidden');
+
+    const dailyContainer = document.getElementById('daily-btn-top').parentElement;
+    if (dailyContainer) dailyContainer.classList.toggle('hidden', !isSongTrivia);
 }
+
 export function populateStats() {} 
 
 export function openStatsLocker() {
@@ -338,7 +322,18 @@ export function updatePlatformUI(context) {
     else if (context === 'song_trivia') {
         rulesContent.innerHTML = `<h2>How to Play</h2><ul style="padding-left: 20px; font-size: 0.95rem; line-height: 1.6; color: #ccc;"><li><strong>Modes:</strong> Play Classic Genre, Artist-Specific, or Guess the Movie!</li><li><strong>Today Three:</strong> A daily synced challenge.</li><li><strong>The Lifeline:</strong> Multiple Choice options drop at 10s.</li></ul><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Got it! Let's Play</button>`;
     }
+    // FIX #4: Add detailed game descriptions to the Info Modal
     else if (context === 'consensus') {
-        rulesContent.innerHTML = `<h2>How to Play</h2><p style="color:#ccc; line-height: 1.6;">A social party game of voting, debating, and guessing the room. Look at the TV to see the prompt, and use your phone to secretly submit your answers!<br><br><strong>Modes:</strong> Play the classic Party Pack, or use Infinite AI to generate absurd new prompts!</p><button class="btn btn-main" onclick="hideModal('rules-modal')" style="margin-top: 10px;">Let's Go!</button>`;
+        rulesContent.innerHTML = `
+            <h2>The 5 Consensus Games</h2>
+            <div style="text-align:left; color:#ccc; line-height:1.5; font-size:0.9rem;">
+                <p><strong style="color:var(--highlight);">1. Most Likely To:</strong> Secretly vote for the player in the room who best fits the description.</p>
+                <p><strong style="color:var(--highlight);">2. The Great Divide:</strong> Pick between two scenarios, then predict which one the majority of the room will choose.</p>
+                <p><strong style="color:var(--highlight);">3. Hive Mind:</strong> This is a Kahoot-style survey. Try to guess the #1 answer from standard Family Feud style data.</p>
+                <p><strong style="color:var(--highlight);">4. Guilty as Charged:</strong> Tap "Raise Hand" if you've done the absurdity. Then predict how many TOTAL hands will be raised.</p>
+                <p><strong style="color:var(--highlight);">5. Shot in the Dark:</strong> Use your phone to type the closest numeric guess. The closer you are, the more points you get.</p>
+            </div>
+            <button class="btn btn-main" onclick="hideModal('rules-modal')" style="width:100%; margin-top: 15px;">Let's Go!</button>
+        `;
     }
 }
