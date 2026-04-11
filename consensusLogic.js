@@ -140,7 +140,10 @@ async function executeFetchLogic() {
                 for(let i=0; i<needed; i++) {
                     const t = allowedTypes[typeTracker % allowedTypes.length];
                     const pool = offlineData[`type${t}`];
-                    state.songs.push(pool[Math.floor(Math.random() * pool.length)]);
+                    let rawQ = pool[Math.floor(Math.random() * pool.length)];
+                    
+                    // NEW FIX: Explicitly append the type so Firebase doesn't throw an undefined error
+                    state.songs.push({ ...rawQ, type: t }); 
                     typeTracker++;
                 }
             }
@@ -198,20 +201,26 @@ function nextRound() {
     state.isProcessing = false;
     
     if (state.isHost) {
-        document.getElementById('score-board').innerHTML = ''; 
-        db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
+        const currentType = parseInt(q.type) || 5; 
         
-        db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
-            if(snap.exists()) {
-                let updates = {};
-                snap.forEach(p => { 
-                    updates[`${p.key}/guess1`] = null; 
-                    updates[`${p.key}/guess2`] = null; 
-                    updates[`${p.key}/status`] = 'guessing'; 
-                });
-                db.ref(`rooms/${state.roomCode}/players`).update(updates);
-            }
+        // NEW FIX: Sanitize the payload to completely eliminate 'undefined' crashes
+        const safeQData = {
+            type: currentType,
+            prompt: q.prompt || "Check TV for prompt",
+            answer: q.answer || 0,
+            optA: q.optA || "",
+            optB: q.optB || "",
+            options: q.options || []
+        };
+        
+        db.ref(`rooms/${state.roomCode}/hostState`).set({ 
+            phase: 'input', 
+            type: currentType, 
+            qData: safeQData, 
+            isDouble: !!isDouble 
         });
+    } else if (state.numPlayers === 1) {
+        renderSoloUI(q);
     }
 
     const q = state.songs[state.curIdx];
@@ -266,67 +275,73 @@ export function renderClientUI(hostState) {
     
     window.consensusTempPayload = { guess1: null, guess2: null }; 
 
-    // NEW: Catch the loading phase and show the UI
     if (hostState.phase === 'loading') {
-        if(promptDiv) promptDiv.classList.add('hidden');
+        if(promptDiv) { promptDiv.innerText = ""; promptDiv.classList.add('hidden'); }
         container.innerHTML = `<div style="font-size:1.5rem; color:var(--brand); font-weight:bold; margin-top:40px;">Generating AI Questions...<br><span style="font-size:1rem; color:var(--text-muted);">Get ready!</span></div>`;
         return;
     }
 
     if (hostState.phase === 'reveal' || hostState.phase === 'gameover') {
-        if(promptDiv) promptDiv.innerText = "";
+        if(promptDiv) { promptDiv.innerText = ""; promptDiv.classList.add('hidden'); }
         container.innerHTML = `<div style="font-size:1.8rem; color:var(--text-muted); font-weight:bold; margin-top:40px;">Look at the TV!</div>`;
         return;
     }
 
     let html = "";
-    const q = hostState.qData;
     
-    if(promptDiv && q) {
+    // Safety Fallbacks
+    const q = hostState.qData || {};
+    const type = parseInt(hostState.type || q.type);
+    
+    if(promptDiv && q.prompt) {
         promptDiv.innerText = q.prompt;
         promptDiv.classList.remove('hidden');
     }
 
-    if (hostState.type === 1) {
+    if (type === 1) {
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             let inner = "";
-            snap.forEach(p => {
-                const isMe = p.key === state.myPlayerId;
-                inner += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
-            });
+            if (snap.exists()) {
+                snap.forEach(p => {
+                    const isMe = p.key === state.myPlayerId;
+                    inner += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true, 1)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
+                });
+            }
             container.innerHTML = inner;
         });
         return; 
     } 
-    else if (hostState.type === 2) {
+    else if (type === 2) {
         html += `
             <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
                 
                 <div id="t2-part1-container" style="transition: all 0.3s ease;">
                     <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. Your Pick</div>
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <button id="t2-g1-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'A')">${q.optA}</button>
-                        <button id="t2-g1-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'B')">${q.optB}</button>
+                        <button id="t2-g1-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'A')">${q.optA || 'Option A'}</button>
+                        <button id="t2-g1-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'B')">${q.optB || 'Option B'}</button>
                     </div>
                 </div>
                 
                 <div id="t2-part2-container" style="opacity:0.3; pointer-events:none; transition: all 0.3s ease;">
                     <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
                     <div style="display:flex; gap:10px;">
-                        <button id="t2-g2-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'A')">${q.optA}</button>
-                        <button id="t2-g2-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'B')">${q.optB}</button>
+                        <button id="t2-g2-A" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'A')">${q.optA || 'Option A'}</button>
+                        <button id="t2-g2-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'B')">${q.optB || 'Option B'}</button>
                     </div>
                 </div>
 
             </div>`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload(false, 2)">LOCK IT IN</button>`;
     }
-    else if (hostState.type === 3) {
-        q.options.forEach((opt, idx) => {
-            html += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', ${idx}); submitConsensusPayload(true)">${opt}</button>`;
-        });
+    else if (type === 3) {
+        if (q.options) {
+            q.options.forEach((opt, idx) => {
+                html += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', ${idx}); submitConsensusPayload(true, 3)">${opt}</button>`;
+            });
+        }
     }
-    else if (hostState.type === 4) {
+    else if (type === 4) {
         html += `
             <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
                 
@@ -346,9 +361,11 @@ export function renderClientUI(hostState) {
             </div>`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload(false, 4)">LOCK IT IN</button>`;
     }
-    else if (hostState.type === 5) {
+    else if (type === 5) {
         html += `<input type="number" id="cons-num" placeholder="Your Exact Guess" style="margin-bottom:15px; width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.2rem; outline:none; text-align:center;" oninput="window.consensusTempPayload.guess1 = this.value">`;
-        html += `<button class="btn btn-main" onclick="submitConsensusPayload(true)">SUBMIT</button>`;
+        html += `<button class="btn btn-main" onclick="submitConsensusPayload(true, 5)">SUBMIT</button>`;
+    } else {
+        html = `<div style="color:var(--fail)">Loading UI...</div>`;
     }
 
     container.innerHTML = html;
