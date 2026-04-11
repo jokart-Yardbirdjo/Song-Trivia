@@ -7,6 +7,7 @@ export const manifest = {
     id: "song_trivia",
     title: "SONG TRIVIA",
     subtitle: "Yardbird's Original Masterpiece",
+    hasDaily: true,
     modes: [
         { id: "genre", title: "🎵 Guess the Artist & Song", desc: "Play by Era, Decade, or specific Genre." },
         { id: "artist", title: "🎤 Guess the Song", desc: "Focus strictly on a single Artist's catalog." },
