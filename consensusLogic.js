@@ -277,17 +277,29 @@ function renderSoloUI(q) {
     if (q.type === 3) {
         q.options.forEach((opt, idx) => {
             const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt;
+            // This works because the closure has access to the module's state!
             btn.onclick = () => { state.soloGuess = idx; evaluateSoloGuess(); };
             mcFields.appendChild(btn);
         });
     } else if (q.type === 5) {
+        // We removed the inline state assignment and added a parameter to the function call
         mcFields.innerHTML = `<input type="number" id="solo-num" placeholder="Your Exact Guess" style="width:100%; padding:15px; background:var(--surface); border:2px solid var(--border); border-radius:8px; color:#fff; font-size:1.2rem; outline:none; margin-bottom:10px;">
-                              <button class="btn btn-main" onclick="state.soloGuess = document.getElementById('solo-num').value; window.activeCartridge.evaluateSoloGuess()">Submit</button>`;
+                              <button class="btn btn-main" onclick="window.activeCartridge.evaluateSoloGuess('num')">SUBMIT</button>`;
     }
 }
 
-export function evaluateSoloGuess() {
+export function evaluateSoloGuess(source) {
     if (state.isProcessing) return;
+    
+    // Safely grab the DOM value from inside the module
+    if (source === 'num') {
+        state.soloGuess = document.getElementById('solo-num').value;
+        if (state.soloGuess === "") {
+            alert("Please enter a guess!");
+            return;
+        }
+    }
+    
     state.isProcessing = true;
     clearInterval(state.timerId);
     
