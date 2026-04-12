@@ -101,7 +101,7 @@ async function executeFetchLogic() {
             let typeInstructions = "";
             if (allowedTypes.includes(1)) typeInstructions += `Type 1 (Who is most likely to): {"type": 1, "prompt": "Who is most likely to..."}. `;
             if (allowedTypes.includes(2)) typeInstructions += `Type 2 (This or That): {"type": 2, "prompt": "Which is superior?", "optA": "...", "optB": "..."}. `;
-            if (allowedTypes.includes(3)) typeInstructions += `Type 3 (Survey): {"type": 3, "prompt": "Name a...", "options": ["#1", "#2", "#3", "Fake"]}. `;
+            if (allowedTypes.includes(3)) typeInstructions += `Type 3 (Survey): {"type": 3, "prompt": "Name a...", "options": ["#1 Answer", "#2 Answer", "#3 Answer", "Plausible but wrong 4th answer"]}. `;
             if (allowedTypes.includes(4)) typeInstructions += `Type 4 (Confession): {"type": 4, "prompt": "Raise your hand if..."}. `;
             if (allowedTypes.includes(5)) typeInstructions += `Type 5 (Guesstimation): {"type": 5, "prompt": "A factual numeric guess question...", "answer": <int>}. Important: DO NOT generate questions about how many jellybeans (or objects) fit inside a container. Prioritize variety like speed, weight, population, time, distance, or cost. `;
 
