@@ -438,11 +438,25 @@ export async function executeFetchLogic() {
         // -------------------------------------------------------------
         
         launchGameUI();
-    } catch (e) { 
-        alert(e.message || "Network Error or iTunes timeout. Please try again."); 
-        document.getElementById('feedback-setup').innerText = "";
+    } catch (error) { 
+        console.error(error);
+        
+        // Show the error cleanly on the UI instead of an ugly alert popup
+        const fbSetup = document.getElementById('feedback-setup');
+        if (fbSetup) {
+            fbSetup.innerHTML = `<span style="color: var(--fail);">❌ ${error.message || "Network Error or iTunes timeout. Please try again."}</span>`;
+        } else {
+            alert("Error: " + (error.message || "Network Error")); 
+        }
+        
+        // Reset the input so they can try again easily
+        document.getElementById('custom-input').value = "";
+        
+        // Restore the buttons
         document.getElementById('start-btn-top').style.display = 'block';
         document.getElementById('daily-btn-top').style.display = 'block';
+        
+        return; // Stop the rest of the game from trying to load
     }
 }
 
