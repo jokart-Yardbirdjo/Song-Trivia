@@ -364,6 +364,8 @@ function endGameSequence() {
             });
             
             finalResults.sort((a, b) => b.score - a.score); 
+            // 👇 ADD THIS LINE to send the leaderboard to the client phones
+            db.ref(`rooms/${state.roomCode}/finalLeaderboard`).set(finalResults);
             
             let podiumHTML = `<div style="margin-top: 15px; text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border);"><h3 style="margin-top:0; color:var(--brand); text-align:center; text-transform:uppercase; margin-bottom:15px;">Final Standings</h3>`;
             finalResults.forEach((p, idx) => {
