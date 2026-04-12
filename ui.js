@@ -15,7 +15,7 @@ export function setMode(mode, element) {
         state.gameState.sub = subOptions[mode][0]; 
         document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
         customInput.classList.add('hidden');
-        customInput.placeholder = "Type entries separated by commas OR paste your Apple Music playlist link...";
+        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
         customInput.type = "text";
         renderSubPills();
     }
@@ -66,7 +66,7 @@ export function setSub(val, element) {
     if (val === 'custom') {
         customInput.classList.remove('hidden');
         // 👇 ADD THIS LINE to ensure the placeholder is correct when they click "Custom" 👇
-        customInput.placeholder = "Type entries separated by commas OR paste a playlist link...";
+        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
         customInput.focus();
     } else {
         customInput.classList.add('hidden');
