@@ -211,7 +211,21 @@ export async function joinRoom() {
             let percentage = (time / (state.timeLimit || 30)) * 100;
             let bgColor = time <= 3 ? 'var(--fail)' : 'var(--primary)';
             
-            timerContainer.innerHTML = `<div class="timer-bar-container" style="margin: 15px 0;"><div class="timer-bar-fill" style="width: ${percentage}%; background-color: ${bgColor};"></div></div>`;
+            // Check if the bar already exists
+            let fill = document.getElementById('client-timer-fill');
+            
+            if (!fill) {
+                // If it doesn't exist, inject it for the first time
+                timerContainer.innerHTML = `<div class="timer-bar-container" style="margin: 15px 0;"><div id="client-timer-fill" class="timer-bar-fill" style="width: 100%;"></div></div>`;
+                fill = document.getElementById('client-timer-fill');
+            }
+            
+            // Apply the new width and color to the EXISTING element
+            // This allows the CSS "transition: width 1s linear" to glide smoothly!
+            if (fill) {
+                fill.style.width = `${percentage}%`;
+                fill.style.backgroundColor = bgColor;
+            }
         }
     });
 
