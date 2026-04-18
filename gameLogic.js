@@ -57,24 +57,43 @@ export async function startDailyChallenge() {
         const apiRes = await fetch(`https://itunes.apple.com/lookup?id=${dailyIds.join(',')}`);
         const data = await apiRes.json();
         
-        state.globalPool = data.results;
-        state.songs = state.globalPool;
+        state.songs = data.results.filter(t => t.previewUrl);
         
+        // NEW FIX: Fetch backup tracks to pad out the multiple-choice options AND fill any missing daily songs
+        const padRes = await fetch(`https://itunes.apple.com/search?term=billboard+hits&limit=20&entity=song`);
+        const padData = await padRes.json();
+        let padTracks = padData.results.filter(t => t.previewUrl);
+        
+        // If an iTunes track was region-blocked or removed, borrow a backup track so we always have 3 rounds!
+        while (state.songs.length < 3 && padTracks.length > 0) {
+            let randomTrack = padTracks.splice(Math.floor(Math.random() * padTracks.length), 1)[0];
+            if (!state.songs.some(s => s.trackId === randomTrack.trackId)) {
+                state.songs.push(randomTrack);
+            }
+        }
+        
+        state.globalPool = [...state.songs, ...padTracks];
+        
+        state.maxRounds = state.songs.length;
+        state.roundsPerPlayer = state.maxRounds;
         state.rawScores = [0]; state.streaks = [0]; state.matchHistory = [[]];
-        state.doubleRounds = [];
+        state.doubleRounds = []; 
         launchGameUI();
     } catch (e) {
+        console.error(e);
         alert(e.message || "Daily Vault requires db_daily.json. Playing fallback...");
         const fallbackRes = await fetch(`https://itunes.apple.com/search?term=pop+rock+hits&limit=20&entity=song`);
         const fallbackData = await fallbackRes.json();
         state.globalPool = fallbackData.results.filter(t => t.previewUrl);
         state.songs = state.globalPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+        
+        state.maxRounds = state.songs.length;
+        state.roundsPerPlayer = state.maxRounds;
         state.rawScores = [0]; state.streaks = [0]; state.matchHistory = [[]];
-        state.doubleRounds = [];
+        state.doubleRounds = []; 
         launchGameUI();
     }
 }
-
 export function startGame() {
     state.isDailyMode = false;
     state.numPlayers = state.isMultiplayer ? state.numPlayers : 1;
