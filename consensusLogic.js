@@ -268,7 +268,7 @@ function nextRound() {
     
     // UPDATED: Text colors
     document.getElementById('feedback').innerHTML = `
-        <div style="font-size:2.5rem; font-weight:900; color:var(--dark-text); margin-bottom:10px;">${q.prompt}</div>
+        <div class="prompt-text">${q.prompt}</div>
         <div style="color:var(--text-muted); font-weight:bold; text-transform:uppercase;">${subText}</div>
         ${state.isHost ? `<div id="host-lock-status" style="color:var(--primary); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>` : ''}
     `;
