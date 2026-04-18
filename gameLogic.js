@@ -61,7 +61,7 @@ export async function startDailyChallenge() {
         state.songs = state.globalPool;
         
         state.rawScores = [0]; state.streaks = [0]; state.matchHistory = [[]];
-        state.doubleRounds = []; // <-- ADD THIS
+        state.doubleRounds = [];
         launchGameUI();
     } catch (e) {
         alert(e.message || "Daily Vault requires db_daily.json. Playing fallback...");
@@ -70,20 +70,16 @@ export async function startDailyChallenge() {
         state.globalPool = fallbackData.results.filter(t => t.previewUrl);
         state.songs = state.globalPool.sort(() => 0.5 - Math.random()).slice(0, 3);
         state.rawScores = [0]; state.streaks = [0]; state.matchHistory = [[]];
-        state.doubleRounds = []; // <-- ADD THIS
+        state.doubleRounds = [];
         launchGameUI();
     }
 }
 
 export function startGame() {
     state.isDailyMode = false;
-    
-    // NEW FIX: Solo play is permanently 1 player. Multiplayer relies strictly on the lobby.
     state.numPlayers = state.isMultiplayer ? state.numPlayers : 1;
     state.timeLimit = state.gameState.level === 'hard' ? 10 : 30; 
     state.roundsPerPlayer = state.gameState.rounds;
-    
-    // NEW FIX: We no longer need to multiply the maxRounds!
     state.maxRounds = state.roundsPerPlayer;
     
     document.getElementById('start-btn-top').style.display = 'none';
@@ -181,9 +177,9 @@ function updateLeaderboard(activeIdx = 0) {
     }
     document.getElementById('score-board').innerHTML = state.rawScores.map((s, i) => {
         const isActive = (i === activeIdx) || activeIdx === -1;
-        const bColor = isActive ? colors[i % colors.length] : '#333';
-        const tColor = isActive ? colors[i % colors.length] : '#666';
-        const ptsColor = isActive ? '#fff' : '#aaa';
+        const bColor = isActive ? colors[i % colors.length] : 'var(--border-light)';
+        const tColor = isActive ? colors[i % colors.length] : 'var(--text-muted)';
+        const ptsColor = isActive ? 'var(--dark-text)' : '#aaa';
         const displayScore = activeIdx === -1 ? getNormalizedScore(s) : Math.round(s);
         
         return `
@@ -202,16 +198,14 @@ export async function executeFetchLogic() {
     
     try {
         let pool = []; let searchTerm = ""; let minYear = 1900, maxYear = 2099;
-        const customVal = document.getElementById('custom-input').value.trim(); // Added .trim() for safety against accidental spaces
+        const customVal = document.getElementById('custom-input').value.trim(); 
         const seenTracks = new Set(); const artistCount = {}; 
         let hitLimit = state.gameState.level === 'easy' ? 15 : 150; 
         
-        // 👇 NEW GLOBAL PLAYLIST INTERCEPTOR 👇
         if (state.gameState.sub === 'custom' && customVal.startsWith('http')) {
             document.getElementById('feedback-setup').innerText = "Extracting Playlist & Matching Audio (Takes ~10 seconds)...";
             pool = await extractPlaylistData(customVal);
         } 
-        // 👇 WRAP THE EXISTING LOGIC IN AN 'ELSE IF' 👇
         else if (state.gameState.mode === 'movie') {
             let selectedMovieGenre = state.gameState.sub;
             
@@ -422,12 +416,8 @@ export async function executeFetchLogic() {
         if(state.songs.length < 3) throw new Error("Not enough tracks found! Try broadening your search.");
         else if(state.songs.length < state.maxRounds) state.maxRounds = state.songs.length;
 
-        // -------------------------------------------------------------
-        // NEW FEATURE: Generate 2X Bonus Rounds (1 per 5 rounds)
         state.doubleRounds = [];
         for (let i = 0; i < state.maxRounds; i += 5) {
-            // If it is the first block of 5, the minimum index is 2 (Round 3). 
-            // Otherwise, the minimum is the start of that 5-round block.
             let min = i === 0 ? 2 : i; 
             let max = Math.min(i + 4, state.maxRounds - 1);
             if (min <= max) {
@@ -435,13 +425,10 @@ export async function executeFetchLogic() {
                 state.doubleRounds.push(randomRound);
             }
         }
-        // -------------------------------------------------------------
         
         launchGameUI();
     } catch (error) { 
         console.error(error);
-        
-        // Show the error cleanly on the UI instead of an ugly alert popup
         const fbSetup = document.getElementById('feedback-setup');
         if (fbSetup) {
             fbSetup.innerHTML = `<span style="color: var(--fail);">❌ ${error.message || "Network Error or iTunes timeout. Please try again."}</span>`;
@@ -449,14 +436,10 @@ export async function executeFetchLogic() {
             alert("Error: " + (error.message || "Network Error")); 
         }
         
-        // Reset the input so they can try again easily
         document.getElementById('custom-input').value = "";
-        
-        // Restore the buttons
         document.getElementById('start-btn-top').style.display = 'block';
         document.getElementById('daily-btn-top').style.display = 'block';
-        
-        return; // Stop the rest of the game from trying to load
+        return; 
     }
 }
 
@@ -489,7 +472,6 @@ function nextTrack() {
     
     state.isProcessing = false; state.hasUsedLifeline = false;
 
-    // --- NEW: PRE-GENERATE MC OPTIONS FOR THIS ROUND ---
     const correctStr = getMCLabel(state.songs[state.curIdx]);
     let wrongOptionsPool = [];
     state.globalPool.forEach(s => {
@@ -500,30 +482,25 @@ function nextTrack() {
     let options = [{ str: correctStr, correct: true }];
     wrongOptionsPool.slice(0, 3).forEach(str => options.push({ str: str, correct: false }));
     state.currentMCOptions = options.sort(() => 0.5 - Math.random());
-    // --------------------------------------------------
     
     const pIdx = state.curIdx % state.numPlayers;
     const currentColor = colors[pIdx % colors.length]; 
     const tag = document.getElementById('active-player');
     
-    // 👇 WE MUST DEFINE THE BONUS VARIABLES HERE 👇
     const isDoubleRound = state.doubleRounds && state.doubleRounds.includes(state.curIdx);
     const doubleText = isDoubleRound ? " - ⭐ 2X BONUS!" : "";
     
     if (state.isMultiplayer && state.isHost) {
         updateLeaderboard(-1);
-        document.documentElement.style.setProperty('--active-vis', 'var(--highlight)');
-        document.getElementById('main-title').style.color = '#ffffff';
+        document.documentElement.style.setProperty('--active-vis', 'var(--primary)');
 
-        // Append the bonus text cleanly!
         tag.innerText = `ROUND ${state.curIdx + 1} / ${state.maxRounds}${doubleText}`;
-        tag.style.color = isDoubleRound ? "#ffcc00" : "var(--highlight)"; 
-        tag.style.borderColor = isDoubleRound ? "#ffcc00" : "var(--highlight)";
+        tag.style.color = isDoubleRound ? "#f39c12" : "var(--primary)"; 
+        tag.style.borderColor = isDoubleRound ? "#f39c12" : "var(--primary)";
         
         db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
-        db.ref(`rooms/${state.roomCode}/currentMC`).remove(); // Hide from phones
+        db.ref(`rooms/${state.roomCode}/currentMC`).remove(); 
 
-        // Secretly save the options in the background for individual phones to grab!
         let fbOptions = state.currentMCOptions.map(opt => ({ str: opt.str, isCorrect: opt.correct }));
         db.ref(`rooms/${state.roomCode}/roundMC`).set(fbOptions);
 
@@ -533,29 +510,32 @@ function nextTrack() {
         
         const currentRound = Math.floor(state.curIdx / state.numPlayers) + 1;
         
-        // Cleanly separate Daily text from Solo/Controller text
         if (state.isDailyMode) {
              tag.innerText = `TODAY'S SONG ${currentRound}/${state.roundsPerPlayer}`;
         } else {
              tag.innerText = state.numPlayers > 1 ? `PLAYER ${pIdx + 1} TURN (Round ${currentRound}/${state.roundsPerPlayer})` : `Round ${currentRound}/${state.roundsPerPlayer}${doubleText}`;
         }
         
-        tag.style.color = isDoubleRound ? "#ffcc00" : "var(--highlight)"; 
-        tag.style.borderColor = isDoubleRound ? "#ffcc00" : "var(--border)";
+        tag.style.color = isDoubleRound ? "#f39c12" : "var(--primary)"; 
+        tag.style.borderColor = isDoubleRound ? "#f39c12" : "var(--border-light)";
         
-        // Reset buttons to CSS defaults
         document.getElementById('stop-btn').style.cssText = "";
         document.getElementById('submit-btn').style.cssText = "";
     }
     
     document.getElementById('feedback').innerHTML = ""; document.getElementById('feedback').classList.remove('fade-in');
     document.getElementById('reveal-art').style.display = 'none'; document.getElementById('reveal-art').classList.remove('fade-in');
-    document.getElementById('timer').innerText = "Load..."; document.getElementById('timer').style.color = '#fff';
+    
+    // Clear out any old timer text
+    const timerElement = document.getElementById('timer');
+    timerElement.style.color = '';
+    timerElement.innerHTML = '';
+    
     document.getElementById('visualizer').classList.remove('active', 'paused'); document.getElementById('visualizer').classList.add('hidden');
     
     if (state.isMultiplayer && state.isHost) {
         document.getElementById('btn-container').classList.add('hidden');
-        document.getElementById('feedback').innerHTML = `<div id="host-lock-status" style="color:var(--brand); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>`;
+        document.getElementById('feedback').innerHTML = `<div id="host-lock-status" style="color:var(--primary); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>`;
         document.getElementById('feedback').classList.add('fade-in');
 
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
@@ -591,17 +571,28 @@ function startRoundClock() {
     document.getElementById('visualizer').classList.remove('hidden'); document.getElementById('visualizer').classList.add('active');
     state.timeLeft = state.timeLimit; state.startTime = Date.now();
     state.scoreLock = 0; state.isGracePeriod = false; state.forcedEarly = false;
-    document.getElementById('timer').innerText = state.timeLeft; document.getElementById('timer').style.color = 'var(--highlight)';
+    
+    // Inject horizontal timer bar
+    const timerElement = document.getElementById('timer');
+    timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
+    const timerFill = document.getElementById('timer-bar-fill');
 
     state.timerId = setInterval(() => {
-        state.timeLeft--; document.getElementById('timer').innerText = state.timeLeft;
+        state.timeLeft--; 
+        
+        let percentage = (state.timeLeft / state.timeLimit) * 100;
+        if(timerFill) timerFill.style.width = `${percentage}%`;
+        
         if (state.isMultiplayer && state.isHost) {
             db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
             db.ref(`rooms/${state.roomCode}/phase`).set(state.isGracePeriod ? 'grace' : 'audio');
         }
+        
         if (state.timeLeft <= 3 && state.timeLeft > 0 && !state.hasUsedLifeline) { 
-            document.getElementById('timer').style.color = '#ff3333'; sfxTick.currentTime = 0; sfxTick.play().catch(e => {}); 
+            if(timerFill) timerFill.style.backgroundColor = 'var(--fail)'; 
+            sfxTick.currentTime = 0; sfxTick.play().catch(e => {}); 
         }
+        
         if (state.timeLeft === 10 && !state.isGracePeriod && state.gameState.level !== 'hard' && !state.hasUsedLifeline) {
             if (state.isMultiplayer && state.isHost) { db.ref(`rooms/${state.roomCode}/lifelineForced`).set(true); triggerLifeline(); } else { triggerLifeline(); }
         }
@@ -610,7 +601,7 @@ function startRoundClock() {
             if (state.isMultiplayer && state.isHost && !state.isGracePeriod) {
                 state.isGracePeriod = true; state.timeLeft = 30; audio.pause();
                 document.getElementById('visualizer').classList.add('paused');
-                document.getElementById('feedback').innerHTML += `<div style="color:var(--p4); font-size:1.1rem; margin-top:10px; font-weight:bold;">Song completed! Please submit final answers in the next 30 seconds.</div>`;
+                document.getElementById('feedback').innerHTML += `<div style="color:var(--text-muted); font-size:1.1rem; margin-top:10px; font-weight:bold;">Song completed! Please submit final answers in the next 30 seconds.</div>`;
             } else {
                 if(state.timerId) clearInterval(state.timerId); audio.pause();
                 document.getElementById('visualizer').classList.add('paused');
@@ -629,8 +620,9 @@ function startRoundClock() {
 
 export function forceLifeline() {
     if (state.timeLeft > 10 && !state.hasUsedLifeline) {
-        state.forcedEarly = true; // Track that they forced it early!
-        state.timeLeft = 10; document.getElementById('timer').innerText = state.timeLeft; triggerLifeline();
+        state.forcedEarly = true; 
+        state.timeLeft = 10; 
+        triggerLifeline();
     }
 }
 
@@ -662,10 +654,21 @@ export function handleStop() {
             else document.getElementById('guess-movie').focus();
         }, 50);
 
-        let guessTime = 20; document.getElementById('timer').innerText = guessTime; document.getElementById('timer').style.color = '#ffcc00'; 
+        let guessTime = 20; 
+        // Inject an orange timer bar for the typing phase
+        const timerElement = document.getElementById('timer');
+        timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill" style="background: #f39c12;"></div></div>`;
+        const timerFill = document.getElementById('timer-bar-fill');
+        
         state.guessTimerId = setInterval(() => {
-            guessTime--; document.getElementById('timer').innerText = guessTime;
-            if (guessTime <= 3 && guessTime > 0) { document.getElementById('timer').style.color = '#ff3333'; sfxTick.currentTime = 0; sfxTick.play().catch(e => {}); }
+            guessTime--; 
+            let percentage = (guessTime / 20) * 100;
+            if(timerFill) timerFill.style.width = `${percentage}%`;
+            
+            if (guessTime <= 3 && guessTime > 0) { 
+                if(timerFill) timerFill.style.backgroundColor = 'var(--fail)'; 
+                sfxTick.currentTime = 0; sfxTick.play().catch(e => {}); 
+            }
             if (guessTime <= 0) { if(state.guessTimerId) clearInterval(state.guessTimerId); evaluateGuess(); }
         }, 1000);
     } else {
@@ -683,12 +686,13 @@ function setupMC() {
     const container = document.getElementById('mc-fields'); container.innerHTML = ''; 
     state.currentMCOptions.forEach(opt => {
         const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt.str;
-        btn.onclick = () => evaluateGuess(opt.correct); container.appendChild(btn);
+        // NEW: Pass the clicked button so we can style it green/red
+        btn.onclick = (e) => evaluateGuess(opt.correct, e.target); container.appendChild(btn);
     });
 
     if (state.isMultiplayer && state.isHost) {
         let fbOptions = state.currentMCOptions.map(opt => ({ str: opt.str, isCorrect: opt.correct }));
-        db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions); // Force it to all phones
+        db.ref(`rooms/${state.roomCode}/currentMC`).set(fbOptions); 
     }
 }
 
@@ -706,7 +710,7 @@ export function submitClientMCGuess(isCorrect) {
     document.getElementById('client-locked-screen').classList.remove('hidden');
 }
 
-export function evaluateGuess(isCorrectMC = null) {
+export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
     if(state.isProcessing && isCorrectMC === null) return; 
     state.isProcessing = true;
     
@@ -714,11 +718,15 @@ export function evaluateGuess(isCorrectMC = null) {
     document.getElementById('visualizer').classList.add('paused');
     document.getElementById('guess-fields').classList.add('hidden'); document.getElementById('btn-container').classList.add('hidden');
     
-    if (state.hasUsedLifeline) document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
+    if (state.hasUsedLifeline) {
+        document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
+        if (clickedBtn) {
+            clickedBtn.classList.add(isCorrectMC ? 'correct' : 'wrong');
+        }
+    }
 
     const pIdx = state.curIdx % state.numPlayers;
     
-    // RULE 2 & 3: Flat 5 points if forced early, otherwise time remaining
     let roundPts = 0;
     if (state.hasUsedLifeline) {
         roundPts = state.forcedEarly ? 5 : Math.max(0, state.timeLeft);
@@ -761,7 +769,7 @@ export function evaluateGuess(isCorrectMC = null) {
 
     if (state.gameState.mode === 'genre' && !state.hasUsedLifeline) {
         if (artOk && sonOk) fbHTML += `<div style="color:${succColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">🔥 PERFECT DOUBLE!</div>`;
-        else if (artOk || sonOk) fbHTML += `<div style="font-size:1.1rem; font-weight:bold; display:flex; justify-content:center; gap:15px; margin-bottom:5px;"><span style="color:${artOk ? succColor : failColor}">${artOk ? '✅' : '❌'} ARTIST</span><span style="color:#666;">|</span><span style="color:${sonOk ? succColor : failColor}">${sonOk ? '✅' : '❌'} SONG</span></div>`;
+        else if (artOk || sonOk) fbHTML += `<div style="font-size:1.1rem; font-weight:bold; display:flex; justify-content:center; gap:15px; margin-bottom:5px; color:var(--dark-text);"><span style="color:${artOk ? succColor : failColor}">${artOk ? '✅' : '❌'} ARTIST</span><span style="color:var(--text-muted);">|</span><span style="color:${sonOk ? succColor : failColor}">${sonOk ? '✅' : '❌'} SONG</span></div>`;
         else fbHTML += `<div style="color:${failColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div>`;
     } else {
         if (correct) fbHTML += `<div style="color:${succColor}; font-size:1.5rem; font-weight:bold; margin-bottom:5px;">🔥 CORRECT!</div>`;
@@ -769,12 +777,11 @@ export function evaluateGuess(isCorrectMC = null) {
     }
 
     if (correct) {
-        // RULE 4: Pure streak bonus only without lifeline
         if (!state.hasUsedLifeline) {
             state.streaks[pIdx]++;
-            if (state.streaks[pIdx] % 3 === 0) { roundPts += 50; fbHTML += `<div style="color:var(--p4); font-size:0.85rem; margin-top:5px;">+50 PURE STREAK BONUS</div>`; }
+            if (state.streaks[pIdx] % 3 === 0) { roundPts += 50; fbHTML += `<div style="color:var(--primary); font-size:0.85rem; margin-top:5px;">+50 PURE STREAK BONUS</div>`; }
         } else {
-            state.streaks[pIdx] = 0; // Using MC breaks the streak!
+            state.streaks[pIdx] = 0; 
         }
         if(fbHTML.includes("DOUBLE") || fbHTML.includes("CORRECT")) { sfxCheer.currentTime=0; sfxCheer.play().catch(e=>{}); }
     } else {
@@ -784,13 +791,13 @@ export function evaluateGuess(isCorrectMC = null) {
 
     if (state.doubleRounds && state.doubleRounds.includes(state.curIdx) && correct) {
         roundPts *= 2;
-        fbHTML += `<div style="color:#ffcc00; font-size:0.9rem; margin-top:5px; font-weight:bold;">⭐ 2X BONUS ROUND APPLIED!</div>`;
+        fbHTML += `<div style="color:#f39c12; font-size:0.9rem; margin-top:5px; font-weight:bold;">⭐ 2X BONUS ROUND APPLIED!</div>`;
     }
     
     state.rawScores[pIdx] += roundPts; updateLeaderboard(pIdx); 
 
-    fbHTML += `<div style="font-size:1.05rem; color:#fff; margin-top:10px;">${realA} - ${realS}</div>`;
-    if (state.gameState.mode === 'movie') fbHTML += `<div style="font-size:0.9rem; color:#ffcc00; margin-top:3px;">🎬 ${realM}</div>`;
+    fbHTML += `<div style="font-size:1.05rem; color:var(--dark-text); margin-top:10px;">${realA} - ${realS}</div>`;
+    if (state.gameState.mode === 'movie') fbHTML += `<div style="font-size:0.9rem; color:var(--primary); margin-top:3px;">🎬 ${realM}</div>`;
 
     document.getElementById('feedback').innerHTML = fbHTML; document.getElementById('feedback').classList.add('fade-in');
     
@@ -823,7 +830,6 @@ export function evaluateMultiplayerRound(players) {
         if (p.guess && p.guess.isMC) {
             correct = p.guess.correct; 
             if (correct) {
-                // RULE 2 & 3: Check if the phone requested the lifeline early!
                 roundPts = p.guess.time > 10 ? 5 : basePts; 
             }
         } else {
@@ -840,21 +846,17 @@ export function evaluateMultiplayerRound(players) {
         }
 
         if (correct) {
-            // RULE 4: Pure streak bonus only without lifeline
             if (!(p.guess && p.guess.isMC)) {
                 state.streaks[index]++;
-                if (state.streaks[index] % 3 === 0) { roundPts += 50; fbHTML += `<div style="color:var(--p4); font-size:0.85rem; margin-top:5px;">+50 PURE STREAK BONUS</div>`; }
+                if (state.streaks[index] % 3 === 0) { roundPts += 50; fbHTML += `<div style="color:var(--primary); font-size:0.85rem; margin-top:5px;">+50 PURE STREAK BONUS</div>`; }
             } else {
-                state.streaks[index] = 0; // Using MC breaks the streak!
+                state.streaks[index] = 0; 
             }
 
-            // -------------------------------------------------------------
-            // NEW FEATURE: Apply the 2X multiplier right here!
             if (state.doubleRounds && state.doubleRounds.includes(state.curIdx)) {
                 roundPts *= 2;
-                fbHTML += `<div style="color:#ffcc00; font-size:0.85rem; margin-top:2px; font-weight:bold;">⭐ 2X BONUS APPLIED!</div>`;
+                fbHTML += `<div style="color:#f39c12; font-size:0.85rem; margin-top:2px; font-weight:bold;">⭐ 2X BONUS APPLIED!</div>`;
             }
-            // -------------------------------------------------------------
             
             state.rawScores[index] += roundPts;
             fbHTML += `<div style="color:var(--success); font-size:1.1rem;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
@@ -864,8 +866,8 @@ export function evaluateMultiplayerRound(players) {
         }
     });
     fbHTML += `</div>`;
-    fbHTML += `<div style="font-size:1.05rem; color:#fff; margin-top:10px;">${realA} - ${realS}</div>`;
-    if (state.gameState.mode === 'movie') fbHTML += `<div style="font-size:0.9rem; color:#ffcc00; margin-top:3px;">🎬 ${realM}</div>`;
+    fbHTML += `<div style="font-size:1.05rem; color:var(--dark-text); margin-top:10px;">${realA} - ${realS}</div>`;
+    if (state.gameState.mode === 'movie') fbHTML += `<div style="font-size:0.9rem; color:var(--primary); margin-top:3px;">🎬 ${realM}</div>`;
 
     updateLeaderboard(-1); 
     document.getElementById('feedback').innerHTML = fbHTML; document.getElementById('feedback').classList.add('fade-in');
@@ -909,10 +911,9 @@ export function shareChallenge() {
 function endGameSequence() {
     document.getElementById('play-screen').classList.add('hidden');
     document.getElementById('final-screen').classList.remove('hidden');
+    
     if(state.isDailyMode) { document.getElementById('main-title').innerText = "🌍 TODAY THREE CHALLENGE"; }
-    document.getElementById('main-title').style.color = '#ffffff'; 
-
-    // --- ADD THIS NEW LINE ---
+    
     document.getElementById('final-subtitle').innerText = "Scores Normalized to 1000";
     
     updateLeaderboard(-1); shootConfetti(); 
@@ -933,13 +934,12 @@ function endGameSequence() {
                 });
                 
                 finalResults.sort((a, b) => b.score - a.score); 
-                // 👇 ADD THIS LINE to send the leaderboard to the client phones
                 db.ref(`rooms/${state.roomCode}/finalLeaderboard`).set(finalResults);
-                let podiumHTML = `<div style="margin-top: 15px; text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border);"><h3 style="margin-top:0; color:var(--brand); text-align:center; text-transform:uppercase; margin-bottom:15px;">Final Standings</h3>`;
+                let podiumHTML = `<div style="margin-top: 15px; text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 2px solid var(--border-light);"><h3 style="margin-top:0; color:var(--primary); text-align:center; text-transform:uppercase; margin-bottom:15px;">Final Standings</h3>`;
                 finalResults.forEach((p, idx) => {
                     let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
-                    let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : '#ccc');
-                    podiumHTML += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid #333; font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="font-family:'Courier New', monospace;">${p.score}</span></div>`;
+                    let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : 'var(--text-muted)');
+                    podiumHTML += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid var(--border-light); font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="font-family:'Courier New', monospace; color: var(--dark-text);">${p.score}</span></div>`;
                 });
                 podiumHTML += `</div>`;
                 document.getElementById('winner-text').innerHTML = podiumHTML; document.getElementById('final-grid').innerHTML = ""; 
@@ -951,7 +951,7 @@ function endGameSequence() {
     } else {
         document.getElementById('winner-text').innerText = state.numPlayers > 1 ? `🏆 PLAYER ${winIdx + 1} WINS! Total: ${maxScore} Pts` : `🏆 Final Score: ${maxScore} Pts`;
         document.getElementById('winner-text').style.color = colors[winIdx];
-        let gridHTML = '<div style="font-size:1.8rem; letter-spacing:4px; margin: 15px 0; text-align:center;">';
+        let gridHTML = '<div style="font-size:1.8rem; letter-spacing:4px; margin: 15px 0; text-align:center; color: var(--dark-text);">';
         state.matchHistory[winIdx].forEach((res, idx) => { gridHTML += res; if ((idx + 1) % 5 === 0) gridHTML += '<br>'; });
         gridHTML += '</div>'; document.getElementById('final-grid').innerHTML = gridHTML;
     }
@@ -976,18 +976,15 @@ function endGameSequence() {
     if (maxScore > state.globalHighScore && maxScore > 0) { localStorage.setItem('yardbirdHighScore', maxScore); document.getElementById('new-record-msg').style.display = 'block'; }
 }
 
-// Add to the bottom of gameLogic.js
 async function extractPlaylistData(urlInput) {
     let extractedTracks = [];
     let validPool = [];
     
-    // 1. Proxy the Request
     const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlInput)}`;
     const response = await fetch(proxyUrl);
     if (!response.ok) throw new Error(`Proxy blocked (HTTP ${response.status})`);
     const html = await response.text();
 
-    // 2. Scrape Apple Music Data
     if (urlInput.includes('music.apple.com')) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -1000,7 +997,6 @@ async function extractPlaylistData(urlInput) {
         });
         if (!playlistData || !playlistData.track) throw new Error("Could not find public track data. Ensure playlist is public.");
         
-        // 👇 THE FIX: Safely parse the artist whether it's an object or an array 👇
         extractedTracks = playlistData.track.map(t => {
             let artistName = "";
             if (t.byArtist) {
@@ -1018,19 +1014,16 @@ async function extractPlaylistData(urlInput) {
 
     if (extractedTracks.length === 0) throw new Error("No tracks extracted from the playlist.");
 
-    // 3. Cross-Reference with iTunes (Limit to 40 tracks to prevent rate-limiting)
     const tracksToProcess = extractedTracks.slice(0, 40);
     const searchPromises = tracksToProcess.map(async (track) => {
         let cleanTitle = track.title.replace(/\(Official.*?\)/gi, '').replace(/\[Official.*?\]/gi, '').trim();
-        
-        // Combine title and artist for a highly accurate iTunes search
         const query = encodeURIComponent(`${cleanTitle} ${track.artist}`.trim());
         
         try {
             const res = await fetch(`https://itunes.apple.com/search?term=${query}&limit=1&entity=song`);
             const data = await res.json();
             if (data.results && data.results.length > 0 && data.results[0].previewUrl) {
-                return data.results[0]; // Return the raw iTunes object our game expects
+                return data.results[0]; 
             }
         } catch (e) {
             console.warn("iTunes match failed for:", track.title);
