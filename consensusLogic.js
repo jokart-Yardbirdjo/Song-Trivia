@@ -112,7 +112,6 @@ async function executeFetchLogic() {
                     model: "gpt-4o-mini",
                     messages: [{ 
                         role: "system", 
-                        // UPDATED: Stricter instruction to ensure equal distribution
                         content: `Generate EXACTLY ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. You MUST provide an equal distribution of these types. Format as JSON object with "questions" array. ${typeInstructions}`
                     }],
                     response_format: { type: "json_object" },
@@ -127,7 +126,6 @@ async function executeFetchLogic() {
                 .map(q => ({ ...q, type: parseInt(q.type) }))
                 .filter(q => allowedTypes.includes(q.type));
             
-            // NEW: Force a shuffle of the AI questions so they don't play sequentially by type
             state.songs = state.songs.sort(() => 0.5 - Math.random());
             
             if (state.songs.length === 0) throw new Error("AI generated invalid question types.");
@@ -137,7 +135,6 @@ async function executeFetchLogic() {
                 const res = await fetch('db_consensus.json');
                 const offlineData = await res.json();
                 
-                // NEW FIX: Shuffle all the backup pools first
                 allowedTypes.forEach(t => {
                     if (offlineData[`type${t}`]) {
                         offlineData[`type${t}`] = offlineData[`type${t}`].sort(() => 0.5 - Math.random());
@@ -149,7 +146,6 @@ async function executeFetchLogic() {
                     const t = allowedTypes[typeTracker % allowedTypes.length];
                     const pool = offlineData[`type${t}`];
                     
-                    // NEW FIX: Pop the question out so it can't be drawn again
                     if (pool && pool.length > 0) {
                         let rawQ = pool.pop();
                         state.songs.push({ ...rawQ, type: t }); 
@@ -175,7 +171,6 @@ async function loadOfflineQuestions(allowedTypes) {
     const response = await fetch('db_consensus.json');
     const data = await response.json();
     
-    // NEW FIX: Shuffle every pool so we can draw cards from the top
     allowedTypes.forEach(t => {
         if (data[`type${t}`]) {
             data[`type${t}`] = data[`type${t}`].sort(() => 0.5 - Math.random());
@@ -188,7 +183,6 @@ async function loadOfflineQuestions(allowedTypes) {
         const type = allowedTypes[typeTracker % allowedTypes.length];
         const pool = data[`type${type}`];
         
-        // NEW FIX: Pop the question out of the pool so it can't be picked again this game
         if (pool && pool.length > 0) {
             const rawQ = pool.pop();
             state.songs.push({ ...rawQ, type: type });
@@ -205,13 +199,14 @@ function launchGameUI() {
     document.getElementById('btn-container').classList.add('hidden');
     document.getElementById('reveal-art').style.display = 'none';
 
+    // UPDATED: Score text color for light mode readability
     if (state.isHost) {
         document.getElementById('score-board').innerHTML = '';
     } else {
         document.getElementById('score-board').innerHTML = state.rawScores.map((s, i) => `
             <div class="score-pill" style="border-color:${colors[i % colors.length]};">
                 <div class="p-name" style="color:${colors[i % colors.length]}">${state.numPlayers === 1 ? 'SCORE' : 'P'+(i+1)}</div>
-                <div class="p-pts" style="color:#fff">${s}</div>
+                <div class="p-pts" style="color:var(--dark-text)">${s}</div>
                 <div class="p-streak" style="color:${colors[i % colors.length]}; opacity:${state.streaks[i] > 0 ? 1 : 0}">🔥 ${state.streaks[i]}</div>
             </div>`).join('');
     }
@@ -223,7 +218,6 @@ function nextRound() {
     if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
     state.isProcessing = false;
     
-    // 👇 FIX: We MUST define the question 'q' at the very top before doing anything else!
     const q = state.songs[state.curIdx];
     const isDouble = state.doubleRounds.includes(state.curIdx);
 
@@ -245,7 +239,6 @@ function nextRound() {
 
         const currentType = parseInt(q.type) || 5; 
         
-        // Sanitize the payload to completely eliminate 'undefined' crashes
         const safeQData = {
             type: currentType,
             prompt: q.prompt || "Check TV for prompt",
@@ -267,28 +260,39 @@ function nextRound() {
 
     const tag = document.getElementById('active-player');
     tag.innerText = `${ROUND_TYPES[q.type]} (Round ${state.curIdx + 1}/${state.maxRounds}) ${isDouble ? '🔥 2X BONUS' : ''}`;
-    tag.style.color = isDouble ? "#ffcc00" : "var(--highlight)";
-    tag.style.borderColor = isDouble ? "#ffcc00" : "var(--highlight)";
+    tag.style.color = isDouble ? "#f39c12" : "var(--primary)";
+    tag.style.borderColor = isDouble ? "#f39c12" : "var(--primary)";
 
     let subText = "Check your phone to answer!";
     if(state.numPlayers === 1) subText = q.type === 3 ? "Pick the #1 Survey Answer!" : "Type your closest guess!";
     
+    // UPDATED: Text colors
     document.getElementById('feedback').innerHTML = `
-        <div style="font-size:2.5rem; font-weight:900; color:#fff; margin-bottom:10px;">${q.prompt}</div>
-        <div style="color:var(--p4); font-weight:bold; text-transform:uppercase;">${subText}</div>
-        ${state.isHost ? `<div id="host-lock-status" style="color:var(--brand); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>` : ''}
+        <div style="font-size:2.5rem; font-weight:900; color:var(--dark-text); margin-bottom:10px;">${q.prompt}</div>
+        <div style="color:var(--text-muted); font-weight:bold; text-transform:uppercase;">${subText}</div>
+        ${state.isHost ? `<div id="host-lock-status" style="color:var(--primary); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>` : ''}
     `;
 
     state.timeLeft = state.timeLimit;
-    document.getElementById('timer').innerText = state.timeLeft;
-    document.getElementById('timer').style.color = 'var(--highlight)';
+    
+    // NEW: Timer Bar Logic
+    const timerElement = document.getElementById('timer');
+    timerElement.style.color = '';
+    timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
+    const timerFill = document.getElementById('timer-bar-fill');
 
     state.timerId = setInterval(() => {
         state.timeLeft--;
-        document.getElementById('timer').innerText = state.timeLeft;
+        
+        let percentage = (state.timeLeft / state.timeLimit) * 100;
+        if(timerFill) timerFill.style.width = `${percentage}%`;
+
         if (state.isHost) db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
 
-        if (state.timeLeft <= 3 && state.timeLeft > 0) sfxTick.play().catch(()=>{});
+        if (state.timeLeft <= 3 && state.timeLeft > 0) {
+            if(timerFill) timerFill.style.backgroundColor = 'var(--fail)';
+            sfxTick.play().catch(()=>{});
+        }
 
         if (state.timeLeft <= 0) {
             clearInterval(state.timerId);
@@ -311,7 +315,7 @@ export function renderClientUI(hostState) {
 
     if (hostState.phase === 'loading') {
         if(promptDiv) { promptDiv.innerText = ""; promptDiv.classList.add('hidden'); }
-        container.innerHTML = `<div style="font-size:1.5rem; color:var(--brand); font-weight:bold; margin-top:40px;">Loading Prompts...<br><span style="font-size:1rem; color:var(--text-muted);">Get ready!</span></div>`;
+        container.innerHTML = `<div style="font-size:1.5rem; color:var(--primary); font-weight:bold; margin-top:40px;">Loading Prompts...<br><span style="font-size:1rem; color:var(--text-muted);">Get ready!</span></div>`;
         return;
     }
 
@@ -322,8 +326,6 @@ export function renderClientUI(hostState) {
     }
 
     let html = "";
-    
-    // Safety Fallbacks
     const q = hostState.qData || {};
     const type = parseInt(hostState.type || q.type);
     
@@ -332,6 +334,7 @@ export function renderClientUI(hostState) {
         promptDiv.classList.remove('hidden');
     }
 
+    // UPDATED: Client Phone UI styling for Light Mode
     if (type === 1) {
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             let inner = "";
@@ -347,8 +350,7 @@ export function renderClientUI(hostState) {
     } 
     else if (type === 2) {
         html += `
-            <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
-                
+            <div style="text-align:left; background:rgba(110, 69, 226, 0.03); padding:15px; border-radius:12px; margin-bottom:15px; border:2px solid var(--border-light);">
                 <div id="t2-part1-container" style="transition: all 0.3s ease;">
                     <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. Your Pick</div>
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
@@ -356,7 +358,6 @@ export function renderClientUI(hostState) {
                         <button id="t2-g1-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess1', 'B')">${q.optB || 'Option B'}</button>
                     </div>
                 </div>
-                
                 <div id="t2-part2-container" style="opacity:0.3; pointer-events:none; transition: all 0.3s ease;">
                     <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Room Prediction</div>
                     <div style="display:flex; gap:10px;">
@@ -364,7 +365,6 @@ export function renderClientUI(hostState) {
                         <button id="t2-g2-B" class="touch-opt mc-btn" style="margin:0; flex:1;" onclick="setConsensusLocalGuess('guess2', 'B')">${q.optB || 'Option B'}</button>
                     </div>
                 </div>
-
             </div>`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload(false, 2)">LOCK IT IN</button>`;
     }
@@ -377,8 +377,7 @@ export function renderClientUI(hostState) {
     }
     else if (type === 4) {
         html += `
-            <div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
-                
+            <div style="text-align:left; background:rgba(110, 69, 226, 0.03); padding:15px; border-radius:12px; margin-bottom:15px; border:2px solid var(--border-light);">
                 <div id="t4-part1-container" style="transition: all 0.3s ease;">
                     <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">1. The Truth</div>
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
@@ -386,17 +385,15 @@ export function renderClientUI(hostState) {
                         <button id="t4-g1-false" class="touch-opt mc-btn" style="margin:0; flex:1; font-size:3rem; padding:10px;" onclick="setConsensusLocalGuess('guess1', false)">👎</button>
                     </div>
                 </div>
-                
                 <div id="t4-part2-container" style="opacity:0.3; pointer-events:none; transition: all 0.3s ease;">
                     <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; font-weight:bold;">2. Prediction</div>
-                    <input type="number" id="t4-g2" placeholder="How many 👍 total?" style="width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.1rem; outline:none;" disabled oninput="window.consensusTempPayload.guess2 = this.value">
+                    <input type="number" id="t4-g2" placeholder="How many 👍 total?" style="width:100%; padding:15px; background:white; color:var(--dark-text); border:2px solid var(--border-light); border-radius:8px; font-size:1.1rem; outline:none;" disabled oninput="window.consensusTempPayload.guess2 = this.value">
                 </div>
-
             </div>`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload(false, 4)">LOCK IT IN</button>`;
     }
     else if (type === 5) {
-        html += `<input type="number" id="cons-num" placeholder="Your Exact Guess" style="margin-bottom:15px; width:100%; padding:15px; background:var(--surface); color:#fff; border:2px solid var(--border); border-radius:8px; font-size:1.2rem; outline:none; text-align:center;" oninput="window.consensusTempPayload.guess1 = this.value">`;
+        html += `<input type="number" id="cons-num" placeholder="Your Exact Guess" style="margin-bottom:15px; width:100%; padding:15px; background:white; color:var(--dark-text); border:2px solid var(--border-light); border-radius:8px; font-size:1.2rem; outline:none; text-align:center;" oninput="window.consensusTempPayload.guess1 = this.value">`;
         html += `<button class="btn btn-main" onclick="submitConsensusPayload(true, 5)">SUBMIT</button>`;
     } else {
         html = `<div style="color:var(--fail)">Loading UI...</div>`;
@@ -471,11 +468,16 @@ function renderSoloUI(q) {
     if (q.type === 3) {
         q.options.forEach((opt, idx) => {
             const btn = document.createElement('button'); btn.className = 'mc-btn'; btn.innerText = opt;
-            btn.onclick = () => { state.soloGuess = idx; evaluateSoloGuess(); };
+            btn.onclick = (e) => { 
+                state.soloGuess = idx; 
+                e.target.classList.add('correct'); // Just visual feedback
+                evaluateSoloGuess(); 
+            };
             mcFields.appendChild(btn);
         });
     } else if (q.type === 5) {
-        mcFields.innerHTML = `<input type="number" id="solo-num" placeholder="Your Exact Guess" style="width:100%; padding:15px; background:var(--surface); border:2px solid var(--border); border-radius:8px; color:#fff; font-size:1.2rem; outline:none; margin-bottom:10px;">
+        // UPDATED: Input styling
+        mcFields.innerHTML = `<input type="number" id="solo-num" placeholder="Your Exact Guess" style="width:100%; padding:15px; background:white; color:var(--dark-text); border:2px solid var(--border-light); border-radius:8px; font-size:1.2rem; outline:none; margin-bottom:10px;">
                               <button class="btn btn-main" onclick="window.activeCartridge.evaluateSoloGuess('num')">SUBMIT</button>`;
     }
 }
@@ -506,14 +508,14 @@ export function evaluateSoloGuess(source) {
         else if (state.soloGuess === 1) roundPts = 200 * mult;
         else if (state.soloGuess === 2) roundPts = 100 * mult;
         
-        fb = `Top Answer: <strong style="color:var(--brand)">${q.options[0]}</strong><br>#2: ${q.options[1]}<br>#3: ${q.options[2]}`;
+        fb = `Top Answer: <strong style="color:var(--primary)">${q.options[0]}</strong><br>#2: ${q.options[1]}<br>#3: ${q.options[2]}`;
     } else if (q.type === 5) {
         const diff = Math.abs(q.answer - parseInt(state.soloGuess || 0));
         if (diff === 0) roundPts = 300 * mult; 
         else if (diff <= q.answer * 0.1) roundPts = 200 * mult; 
         else if (diff <= q.answer * 0.25) roundPts = 100 * mult; 
         
-        fb = `Actual Answer: <strong style="color:var(--brand)">${q.answer}</strong> (You guessed ${state.soloGuess || 0})`;
+        fb = `Actual Answer: <strong style="color:var(--primary)">${q.answer}</strong> (You guessed ${state.soloGuess || 0})`;
     }
 
     if (roundPts > 0) {
@@ -534,7 +536,8 @@ export function evaluateSoloGuess(source) {
         document.getElementById('feedback').innerHTML += `<div style="margin-top:25px; font-size:1.2rem; color:var(--text-muted); font-weight:bold; text-transform:uppercase;">Calculating final scores...</div>`;
     }
 
-    document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
+    // UPDATED: Scoreboard styling
+    document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts" style="color:var(--dark-text);">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
     
     state.curIdx++; setTimeout(nextRound, 4000);
 }
@@ -569,7 +572,7 @@ export function evaluateMultiplayerRound(players) {
             let names = topTierIds.map(pid => players[pid]?.name || 'Nobody').join(" & ");
             let tieTxt = topTierIds.length > 1 ? " (It's a tie!)" : "";
             
-            revealHTML = `Most Voted${tieTxt}: <strong style="color:var(--brand)">${names}</strong> (${sorted[0]} votes)`;
+            revealHTML = `Most Voted${tieTxt}: <strong style="color:var(--primary)">${names}</strong> (${sorted[0]} votes)`;
             
             if(sorted[0] !== undefined) voteGroups[sorted[0]].forEach(pid => roundEarnings[pid] = 300 * mult);
             if(sorted[1] !== undefined) voteGroups[sorted[1]].forEach(pid => roundEarnings[pid] = 200 * mult);
@@ -581,15 +584,13 @@ export function evaluateMultiplayerRound(players) {
         pIds.forEach(pid => { if(players[pid].guess1 === 'A') aVotes++; else if(players[pid].guess1 === 'B') bVotes++; });
         let roomWinner = aVotes > bVotes ? 'A' : (bVotes > aVotes ? 'B' : 'Tie');
         
-        // UPDATED: Distinct UI message for a tie
         if (roomWinner === 'Tie') {
-            revealHTML = `<div style="color:var(--brand)">It's a Tie! Both sides win.</div>`;
+            revealHTML = `<div style="color:var(--primary)">It's a Tie! Both sides win.</div>`;
         } else {
-            revealHTML = `The Room Chose: <strong style="color:var(--brand)">${roomWinner === 'A' ? q.optA : q.optB}</strong>`;
+            revealHTML = `The Room Chose: <strong style="color:var(--primary)">${roomWinner === 'A' ? q.optA : q.optB}</strong>`;
         }
         
         pIds.forEach(pid => { 
-            // UPDATED: If it's a tie, anyone who made a valid prediction gets points
             if (roomWinner === 'Tie' && (players[pid].guess2 === 'A' || players[pid].guess2 === 'B')) {
                 roundEarnings[pid] = 300 * mult;
             } else if (players[pid].guess2 === roomWinner) {
@@ -598,7 +599,7 @@ export function evaluateMultiplayerRound(players) {
         });
     }
     else if (q.type === 3) {
-        revealHTML = `Top Answer: <strong style="color:var(--brand)">${q.options[0]}</strong><br>#2: ${q.options[1]}<br>#3: ${q.options[2]}`;
+        revealHTML = `Top Answer: <strong style="color:var(--primary)">${q.options[0]}</strong><br>#2: ${q.options[1]}<br>#3: ${q.options[2]}`;
         pIds.forEach(pid => {
             let g = players[pid].guess1;
             let pts = g === 0 ? 300 : (g === 1 ? 200 : (g === 2 ? 100 : 0));
@@ -608,11 +609,11 @@ export function evaluateMultiplayerRound(players) {
     else if (q.type === 4) {
         let raised = 0;
         pIds.forEach(pid => { if(players[pid].guess1 === true) raised++; });
-        revealHTML = `👍 Total Thumbs Up: <strong style="color:var(--brand)">${raised}</strong>`;
+        revealHTML = `👍 Total Thumbs Up: <strong style="color:var(--primary)">${raised}</strong>`;
         pIds.forEach(pid => { if (parseInt(players[pid].guess2) === raised) roundEarnings[pid] = 300 * mult; });
     }
     else if (q.type === 5) {
-        revealHTML = `Actual Answer: <strong style="color:var(--brand)">${q.answer}</strong>`;
+        revealHTML = `Actual Answer: <strong style="color:var(--primary)">${q.answer}</strong>`;
         let diffs = [];
         pIds.forEach(pid => { if(players[pid].guess1) diffs.push({ pid: pid, diff: Math.abs(q.answer - parseInt(players[pid].guess1)) }); });
         let diffGroups = {};
@@ -630,16 +631,17 @@ export function evaluateMultiplayerRound(players) {
 
     document.getElementById('score-board').innerHTML = ''; 
 
-    let fbHTML = `<div style="font-size:1.3rem; margin-bottom:15px; color:#fff;">${revealHTML}</div><div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">`;
+    // UPDATED: Evaluation text colors
+    let fbHTML = `<div style="font-size:1.3rem; margin-bottom:15px; color:var(--dark-text);">${revealHTML}</div><div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">`;
     pIds.forEach((pid, index) => {
         if (roundEarnings[pid] > 0) {
             state.streaks[index]++;
             if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundEarnings[pid] += 50; 
             state.rawScores[index] += roundEarnings[pid];
-            fbHTML += `<div style="background:var(--surface); border:1px solid var(--success); padding:8px 12px; border-radius:8px; color:var(--success); font-weight:bold; font-size:0.9rem;">✅ ${players[pid].name}: +${roundEarnings[pid]}</div>`;
+            fbHTML += `<div style="background:rgba(0, 184, 148, 0.1); border:1px solid var(--success); padding:8px 12px; border-radius:8px; color:var(--success); font-weight:bold; font-size:0.9rem;">✅ ${players[pid].name}: +${roundEarnings[pid]}</div>`;
         } else {
             state.streaks[index] = 0;
-            fbHTML += `<div style="background:var(--surface); border:1px solid var(--fail); padding:8px 12px; border-radius:8px; color:var(--fail); font-weight:bold; font-size:0.9rem;">❌ ${players[pid].name}: 0</div>`;
+            fbHTML += `<div style="background:rgba(214, 48, 49, 0.1); border:1px solid var(--fail); padding:8px 12px; border-radius:8px; color:var(--fail); font-weight:bold; font-size:0.9rem;">❌ ${players[pid].name}: 0</div>`;
         }
     });
 
@@ -654,10 +656,11 @@ export function evaluateMultiplayerRound(players) {
     db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'reveal' });
     document.getElementById('feedback').innerHTML = fbHTML;
     
+    // UPDATED: Scoreboard styling
     document.getElementById('score-board').innerHTML = state.rawScores.map((s, i) => `
         <div class="score-pill" style="border-color:${colors[i % colors.length]};">
             <div class="p-name" style="color:${colors[i % colors.length]}">P${i+1}</div>
-            <div class="p-pts" style="color:#fff">${s}</div>
+            <div class="p-pts" style="color:var(--dark-text)">${s}</div>
             <div class="p-streak" style="color:${colors[i % colors.length]}; opacity:${state.streaks[i] > 0 ? 1 : 0}">🔥 ${state.streaks[i]}</div>
         </div>`).join('');
 
@@ -684,13 +687,13 @@ function endGameSequence() {
             });
             
             results.sort((a, b) => b.score - a.score);
-            // NEW: Push the final sorted leaderboard to the room for clients to read
             db.ref(`rooms/${state.roomCode}/finalLeaderboard`).set(results);
-            let podium = `<div style="text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">`;
+            // UPDATED: Podium text and border colors
+            let podium = `<div style="text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 2px solid var(--border-light);">`;
             results.forEach((p, idx) => {
                 let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
-                let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : '#ccc');
-                podium += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid #333; font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span>${p.score}</span></div>`;
+                let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : 'var(--text-muted)');
+                podium += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid var(--border-light); font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="color: var(--dark-text);">${p.score}</span></div>`;
             });
             document.getElementById('winner-text').innerHTML = podium + `</div>`;
             db.ref(`rooms/${state.roomCode}/state`).set('finished');
