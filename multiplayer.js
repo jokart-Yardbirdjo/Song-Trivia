@@ -13,22 +13,18 @@ export function handleHostSetup() {
     hideModal('multiplayer-modal');
     document.getElementById('setup-screen').classList.remove('hidden');
     
-    // Setup the main button
-    document.getElementById('start-btn-top').innerText = "▶ CREATE MULTIPLAYER ROOM";
+    document.getElementById('start-btn-top').innerText = "🚀 CREATE MULTIPLAYER ROOM";
     document.getElementById('start-btn-top').onclick = createRoom;
     
-    // Hide Solo/Daily UI elements to standardize the screen
     const dailyContainer = document.getElementById('daily-btn-top').parentElement;
     if (dailyContainer) dailyContainer.classList.add('hidden');
     
     const separator = document.querySelector('#setup-screen .separator-line');
     if (separator) separator.classList.add('hidden'); 
     
-    // Hide the header navigation (Hamburger & Stats)
     document.getElementById('menu-btn').classList.add('hidden');
     document.getElementById('stats-btn').classList.add('hidden');
     
-    // Update our single escape button text
     const backBtn = document.getElementById('back-to-main-btn');
     if (backBtn) backBtn.innerText = "CANCEL MULTIPLAYER";
     
@@ -119,9 +115,20 @@ export async function joinRoom() {
     if (!roomSnap.exists()) { fb.innerText = "Room not found. Check the code!"; return; }
     if (roomSnap.val().state !== 'lobby') { fb.innerText = "Game is already in progress!"; return; }
 
-    // FIX #2: Pre-load the Cartridge right now so it is ready before the game even starts!
-    const cartId = roomSnap.val().cartridgeId;
+    const roomData = roomSnap.val();
+    const cartId = roomData.cartridgeId;
     if (cartId && window.loadCartridge) window.loadCartridge(cartId);
+    
+    state.gameState = roomData.settings || state.gameState;
+
+    // Calculate max time for the client timer bar
+    if (cartId === 'fast_math') {
+        state.timeLimit = state.gameState.level === 'easy' ? 20 : (state.gameState.level === 'medium' ? 15 : 8);
+    } else if (cartId === 'consensus') {
+        state.timeLimit = state.gameState.level === 'easy' ? 30 : 15;
+    } else {
+        state.timeLimit = state.gameState.level === 'hard' ? 10 : 30;
+    }
 
     state.roomCode = codeInput;
     state.myPlayerId = "player_" + Date.now() + Math.floor(Math.random()*1000); 
@@ -136,7 +143,6 @@ export async function joinRoom() {
     waitScreen.innerHTML = `<h2 style="color:var(--brand);">You're in!</h2><p style="font-size:1.2rem;">Look at the big screen.</p>`;
     document.querySelector('.container').appendChild(waitScreen);
 
-    // Dynamic Game Start
     db.ref(`rooms/${state.roomCode}/state`).on('value', (snap) => {
         if (!snap.exists()) { location.reload(); }
         else if (snap.val() === 'playing') {
@@ -149,16 +155,15 @@ export async function joinRoom() {
                 if (scoreSnap.exists()) document.getElementById('client-final-score').innerText = scoreSnap.val();
             });
 
-            // NEW: Fetch and render the final leaderboard on the client phone
             db.ref(`rooms/${state.roomCode}/finalLeaderboard`).once('value', lbSnap => {
                 if(lbSnap.exists()) {
                     let results = lbSnap.val();
-                    let html = `<div style="text-align:left; background:rgba(0,0,0,0.2); padding:15px; border-radius:12px; border:1px solid var(--border);">`;
+                    let html = `<div style="text-align:left; background:rgba(0,0,0,0.03); padding:15px; border-radius:12px; border:2px solid var(--border-light);">`;
                     html += `<div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px; font-weight:bold; text-align:center;">Final Standings</div>`;
                     results.forEach((p, idx) => {
                         let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
-                        let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : '#ccc');
-                        html += `<div style="display:flex; justify-content:space-between; padding: 10px 5px; border-bottom: 1px solid #333; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span>${p.score}</span></div>`;
+                        let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : 'var(--text-muted)');
+                        html += `<div style="display:flex; justify-content:space-between; padding: 10px 5px; border-bottom: 1px solid var(--border-light); font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="color:var(--dark-text)">${p.score}</span></div>`;
                     });
                     html += `</div>`;
                     const lbContainer = document.getElementById('client-leaderboard-container');
@@ -196,21 +201,46 @@ export async function joinRoom() {
         }
     });
 
+    // 🚀 NEW TIMER BAR LOGIC FOR CLIENT 🚀
     db.ref(`rooms/${state.roomCode}/timeLeft`).on('value', snap => {
-        if(snap.exists() && document.getElementById('client-timer-display')) document.getElementById('client-timer-display').innerText = snap.val();
+        const timerContainer = document.getElementById('client-timer-display');
+        if(snap.exists() && timerContainer) {
+            const time = snap.val();
+            timerContainer.dataset.time = time; 
+            
+            let percentage = (time / (state.timeLimit || 30)) * 100;
+            let bgColor = time <= 3 ? 'var(--fail)' : 'var(--primary)';
+            
+            timerContainer.innerHTML = `<div class="timer-bar-container" style="margin: 15px 0;"><div class="timer-bar-fill" style="width: ${percentage}%; background-color: ${bgColor};"></div></div>`;
+        }
     });
 
+    // 🚀 NEW DYNAMIC PROMPT INJECTION FOR CLIENT 🚀
     db.ref(`rooms/${state.roomCode}/currentPrompt`).on('value', snap => {
-        const promptDiv = document.getElementById('client-prompt');
-        if (snap.exists() && promptDiv) {
-            promptDiv.innerText = snap.val();
+        let promptDiv = document.getElementById('client-prompt');
+        
+        if (snap.exists()) {
+            if (!promptDiv) {
+                promptDiv = document.createElement('div');
+                promptDiv.id = 'client-prompt';
+                const playScreen = document.getElementById('client-play-screen');
+                const mcInputs = document.getElementById('client-mc-inputs');
+                if (playScreen && mcInputs) playScreen.insertBefore(promptDiv, mcInputs);
+            }
+            
+            if (promptDiv.parentElement && promptDiv.parentElement.id === 'client-text-inputs') {
+                const playScreen = document.getElementById('client-play-screen');
+                const mcInputs = document.getElementById('client-mc-inputs');
+                if (playScreen && mcInputs) playScreen.insertBefore(promptDiv, mcInputs);
+            }
+
+            promptDiv.innerHTML = `<div class="prompt-text" style="text-align:center; margin-top:15px; margin-bottom:20px;">${snap.val()}</div>`;
             promptDiv.classList.remove('hidden');
         } else if (promptDiv) {
             promptDiv.classList.add('hidden');
         }
     });
     
-    // Dynamic Cartridge Listener
     db.ref(`rooms/${state.roomCode}/hostState`).on('value', snap => {
         if (snap.exists() && window.activeCartridge && window.activeCartridge.renderClientUI) {
             document.getElementById('client-text-inputs').classList.add('hidden');
@@ -223,10 +253,7 @@ export async function joinRoom() {
 
 export async function startMultiplayerGame() {
     document.getElementById('host-lobby-screen').classList.add('hidden');
-    
     await db.ref(`rooms/${state.roomCode}`).update({ state: 'playing', currentRound: 1, mode: state.gameState.mode });
-    
-    // NEW: Push a loading phase so client phones update immediately while AI generates
     await db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'loading' });
 
     db.ref(`rooms/${state.roomCode}/players`).on('value', (snap) => {
@@ -267,7 +294,10 @@ export function submitClientTextGuess() {
     const artist = document.getElementById('client-guess-artist').value.trim();
     const song = document.getElementById('client-guess-song').value.trim();
     const movie = document.getElementById('client-guess-movie').value.trim();
-    const currentTime = parseInt(document.getElementById('client-timer-display').innerText) || 0;
+    
+    // Read from dataset instead of text
+    const timerContainer = document.getElementById('client-timer-display');
+    const currentTime = timerContainer ? (parseInt(timerContainer.dataset.time) || 0) : 0;
     
     db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({
         guess: { isMC: false, artist: artist, song: song, movie: movie, time: currentTime },
@@ -304,7 +334,10 @@ function renderClientMC(options) {
 }
 
 function submitClientMCGuess(isCorrect) {
-    const currentTime = parseInt(document.getElementById('client-timer-display').innerText) || 0;
+    // Read from dataset instead of text
+    const timerContainer = document.getElementById('client-timer-display');
+    const currentTime = timerContainer ? (parseInt(timerContainer.dataset.time) || 0) : 0;
+    
     db.ref(`rooms/${state.roomCode}/players/${state.myPlayerId}`).update({
         guess: { isMC: true, correct: isCorrect, time: currentTime },
         status: 'locked'
