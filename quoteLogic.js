@@ -19,8 +19,16 @@ export const manifest = {
     clientUI: "multiple-choice" 
 };
 
+export function resetStats() { 
+    if(confirm("Are you sure you want to reset your Who Said It stats?")) {
+        state.userStats.who_said_it = { gamesPlayed: 0, highScore: 0 };
+        localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
+        alert("Who Said It stats reset.");
+        if (window.hideModal) window.hideModal('stats-modal');
+    }
+}
+
 // Required hooks to prevent platform errors
-export function resetStats() { console.log("Stats reset not yet implemented for Quotes"); }
 export function handleStop() { return; }
 export function forceLifeline() { return; }
 export function startDailyChallenge() { alert("Daily mode coming soon!"); }
@@ -268,4 +276,16 @@ function endGameSequence() {
         document.getElementById('winner-text').style.color = colors[0];
         document.getElementById('final-grid').innerHTML = "";
     }
+    
+    // Add this to the very bottom of endGameSequence() in quoteLogic.js
+    state.userStats.who_said_it = state.userStats.who_said_it || { gamesPlayed: 0, highScore: 0 };
+    
+    if (maxScore > (state.userStats.who_said_it.highScore || 0)) {
+        state.userStats.who_said_it.highScore = maxScore;
+    }
+
+    state.userStats.who_said_it.gamesPlayed++;
+    state.userStats.platformGamesPlayed++;
+    
+    localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 }
