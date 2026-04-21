@@ -19,6 +19,16 @@ export const manifest = {
     clientUI: "multiple-choice" 
 };
 
+// Simple PRNG to ensure challengers get the exact same quotes
+function createPRNG(seed) {
+    return function() {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+
 export function resetStats() { 
     if(confirm("Are you sure you want to reset your Who Said It stats?")) {
         state.userStats.who_said_it = { gamesPlayed: 0, highScore: 0 };
@@ -34,24 +44,15 @@ export function forceLifeline() { return; }
 export function startDailyChallenge() { alert("Daily mode coming soon!"); }
 
 export function shareChallenge() {
-    // 1. Generate a seed based on the quotes the player just experienced
-    const challengeSeed = btoa(JSON.stringify(state.songs.map(q => q.q))).substring(0, 10);
-    // 2. Grab their score
     const score = Math.max(...state.rawScores); 
     
-    // 3. Build the URL and Text
-    const url = `${window.location.origin}${window.location.pathname}?game=who_said_it&seed=${challengeSeed}&beat=${score}`;
+    // Build URL with Mode and Seed
+    const url = `${window.location.origin}${window.location.pathname}?game=who_said_it&mode=${state.gameState.mode}&seed=${state.gameSeed}&beat=${score}`;
     const text = `🗣️ I just scored ${score} points in Who Said It! Think you can beat me?`;
 
-    // 4. Native OS Share Sheet (Like Fast Math)
     if (navigator.share) {
-        navigator.share({ 
-            title: "Beat My Quote Score!", 
-            text: text, 
-            url: url 
-        }).catch(console.error);
+        navigator.share({ title: "Beat My Quote Score!", text: text, url: url }).catch(console.error);
     } else {
-        // Fallback for older browsers
         if (navigator.clipboard) {
             navigator.clipboard.writeText(`${text}\n${url}`)
                 .then(() => alert("Challenge Link Copied! Paste it to a friend."))
@@ -69,6 +70,27 @@ export async function startGame() {
     state.curIdx = 0;
     state.rawScores = new Array(state.numPlayers).fill(0);
     state.streaks = new Array(state.numPlayers).fill(0);
+
+    // 👇 URL PARSER & PRNG INITIALIZATION 👇
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetScore = urlParams.get('beat');
+    const urlSeed = urlParams.get('seed');
+    const urlMode = urlParams.get('mode');
+
+    // Force the correct category if challenged
+    if (urlMode) state.gameState.mode = urlMode; 
+
+    // Use Challenger's seed, or make a new one
+    state.gameSeed = urlSeed ? parseInt(urlSeed) : Math.floor(Math.random() * 1000000);
+    state.prng = createPRNG(state.gameSeed);
+
+    if (targetScore) {
+        document.getElementById('feedback').insertAdjacentHTML('afterend', 
+            `<div id="challenge-banner" style="background:var(--primary); color:white; padding:8px; border-radius:8px; margin-top:10px; text-align:center; font-weight:bold; font-size: 1.2rem;">
+                🎯 Target to Beat: ${targetScore} Pts
+            </div>`
+        );
+    }
 
     // Platform UI Prep
     document.getElementById('setup-screen').classList.add('hidden');
@@ -95,8 +117,8 @@ export async function startGame() {
             location.reload(); return;
         }
 
-        // Shuffle and slice for the game
-        state.songs = pool.sort(() => 0.5 - Math.random()).slice(0, state.maxRounds);
+        // Shuffle and slice for the game using PRNG
+        state.songs = pool.sort(() => 0.5 - state.prng()).slice(0, state.maxRounds);
         
         // Build a global pool of authors for wrong answers
         state.globalPool = [];
@@ -118,13 +140,13 @@ function nextRound() {
     const currentData = state.songs[state.curIdx];
     const tag = document.getElementById('active-player');
 
-    // Generate 3 random wrong answers
+    // Generate 3 random wrong answers using PRNG
     let options = [{ str: currentData.a, isCorrect: true }];
-    let wrongPool = state.globalPool.filter(a => a !== currentData.a).sort(() => 0.5 - Math.random());
+    let wrongPool = state.globalPool.filter(a => a !== currentData.a).sort(() => 0.5 - state.prng());
     for(let i=0; i<3; i++) {
         if(wrongPool[i]) options.push({ str: wrongPool[i], isCorrect: false });
     }
-    options = options.sort(() => 0.5 - Math.random());
+    options = options.sort(() => 0.5 - state.prng());
 
     if (state.isMultiplayer && state.isHost) {
         document.getElementById('score-board').innerHTML = ''; 
