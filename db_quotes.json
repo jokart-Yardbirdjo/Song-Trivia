@@ -69,24 +69,12 @@
       "a": "Viral Video"
     },
     {
-      "q": "It's a beautiful day to leave me alone.",
-      "a": "Internet Culture"
-    },
-    {
       "q": "And I took that personally.",
       "a": "Michael Jordan"
     },
     {
       "q": "Stop the cap.",
       "a": "Twitch Culture"
-    },
-    {
-      "q": "I’m the main character.",
-      "a": "Internet Culture"
-    },
-    {
-      "q": "Gaslight, gatekeep, girlboss.",
-      "a": "Internet Culture"
     },
     {
       "q": "I literally do not have the energy for this today.",
@@ -97,20 +85,44 @@
       "a": "Drake"
     },
     {
-      "q": "Rent free.",
-      "a": "Internet Culture"
-    },
-    {
       "q": "Periodt.",
       "a": "City Girls"
     },
     {
-      "q": "We ride at dawn.",
-      "a": "Internet Culture"
+      "q": "I don't know her.",
+      "a": "Mariah Carey"
     },
     {
-      "q": "I woke up and chose violence.",
-      "a": "Internet Culture"
+      "q": "Sashay away.",
+      "a": "RuPaul"
+    },
+    {
+      "q": "My money don't jiggle jiggle, it folds.",
+      "a": "Louis Theroux"
+    },
+    {
+      "q": "I'm a savage. Classy, bougie, ratchet.",
+      "a": "Megan Thee Stallion"
+    },
+    {
+      "q": "You are the weakest link. Goodbye.",
+      "a": "Anne Robinson"
+    },
+    {
+      "q": "We have food at home.",
+      "a": "Every Mom Ever"
+    },
+    {
+      "q": "Not today, Satan. Not today.",
+      "a": "Bianca Del Rio"
+    },
+    {
+      "q": "I'm ready, I'm ready, I'm ready!",
+      "a": "SpongeBob SquarePants"
+    },
+    {
+      "q": "Is mayonnaise an instrument?",
+      "a": "Patrick Star"
     },
     {
       "q": "I don't know her.",
@@ -133,34 +145,6 @@
       "a": "Anne Robinson"
     },
     {
-      "q": "I love that for you.",
-      "a": "Internet Culture"
-    },
-    {
-      "q": "It's the audacity for me.",
-      "a": "Internet Culture"
-    },
-    {
-      "q": "I feel like that's a me problem.",
-      "a": "Internet Culture"
-    },
-    {
-      "q": "I'm baby.",
-      "a": "Internet Culture"
-    },
-    {
-      "q": "We have food at home.",
-      "a": "Every Mom Ever"
-    },
-    {
-      "q": "Sir, this is a Wendy's.",
-      "a": "Internet Culture"
-    },
-    {
-      "q": "I'm doing my part!",
-      "a": "Internet Culture"
-    },
-    {
       "q": "Not today, Satan. Not today.",
       "a": "Bianca Del Rio"
     },
@@ -173,72 +157,92 @@
       "a": "Patrick Star"
     },
     {
-      "q": "I'm not saying I'm Batman, I'm just saying nobody has ever seen me and Batman in the same room.",
-      "a": "Internet Culture"
+      "q": "I am Beyoncé, always.",
+      "a": "Michael Scott"
     },
     {
-      "q": "I don't know her.",
-      "a": "Mariah Carey"
+      "q": "I feel God in this Chili's tonight.",
+      "a": "Pam Beesly"
     },
     {
-      "q": "Sashay away.",
-      "a": "RuPaul"
+      "q": "These gays, they're trying to murder me!",
+      "a": "Jennifer Coolidge"
     },
     {
-      "q": "My money don't jiggle jiggle, it folds.",
-      "a": "Louis Theroux"
+      "q": "Please, these gays, they're trying to murder me.",
+      "a": "Tanya McQuoid"
     },
     {
-      "q": "I'm a savage. Classy, bougie, ratchet.",
-      "a": "Megan Thee Stallion"
+      "q": "Can I get a little commotion for the dress?",
+      "a": "Lizzo"
     },
     {
-      "q": "You are the weakest link. Goodbye.",
-      "a": "Anne Robinson"
+      "q": "I love your hair, hope you win.",
+      "a": "Lady Gaga"
     },
     {
-      "q": "I love that for you.",
-      "a": "Internet Culture"
+      "q": "I'm smiling, but I'm crying.",
+      "a": "Katy Perry"
     },
     {
-      "q": "It's the audacity for me.",
-      "a": "Internet Culture"
+      "q": "Kim, would you stop taking pictures of yourself? Your sister's going to jail.",
+      "a": "Kris Jenner"
     },
     {
-      "q": "I feel like that's a me problem.",
-      "a": "Internet Culture"
+      "q": "I'm sick and tired of being sick and tired.",
+      "a": "Fannie Lou Hamer"
     },
     {
-      "q": "I'm baby.",
-      "a": "Internet Culture"
+      "q": "It's going to be a no from me.",
+      "a": "Simon Cowell"
     },
     {
-      "q": "We have food at home.",
-      "a": "Every Mom Ever"
+      "q": "What an idiot.",
+      "a": "Gordon Ramsay"
     },
     {
-      "q": "Sir, this is a Wendy's.",
-      "a": "Internet Culture"
+      "q": "You're an idiot sandwich.",
+      "a": "Gordon Ramsay"
     },
     {
-      "q": "I'm doing my part!",
-      "a": "Internet Culture"
+      "q": "PIVOT!",
+      "a": "Ross Geller"
     },
     {
-      "q": "Not today, Satan. Not today.",
-      "a": "Bianca Del Rio"
+      "q": "How you doin'?",
+      "a": "Joey Tribbiani"
     },
     {
-      "q": "I'm ready, I'm ready, I'm ready!",
-      "a": "SpongeBob SquarePants"
+      "q": "I'm a lover, not a fighter.",
+      "a": "Michael Jackson"
     },
     {
-      "q": "Is mayonnaise an instrument?",
-      "a": "Patrick Star"
+      "q": "Lies run sprints, but the truth runs marathons.",
+      "a": "Michael Jackson"
     },
     {
-      "q": "I'm not saying I'm Batman, I'm just saying nobody has ever seen me and Batman in the same room.",
-      "a": "Internet Culture"
+      "q": "I have a dream that my four little children will one day live in a nation where they will not be judged by the color of their skin.",
+      "a": "Martin Luther King Jr."
+    },
+    {
+      "q": "Float like a butterfly, sting like a bee. His hands can't hit what his eyes can't see.",
+      "a": "Muhammad Ali"
+    },
+    {
+      "q": "A champion is someone who gets up when he can't.",
+      "a": "Jack Dempsey"
+    },
+    {
+      "q": "I've failed over and over and over again in my life. And that is why I succeed.",
+      "a": "Michael Jordan"
+    },
+    {
+      "q": "The only thing we have to fear is fear itself.",
+      "a": "Franklin D. Roosevelt"
+    },
+    {
+      "q": "Speak softly and carry a big stick.",
+      "a": "Theodore Roosevelt"
     }
   ],
   "movie": [
@@ -729,6 +733,50 @@
     {
       "q": "Why do we fall, sir? So that we can learn to pick ourselves up.",
       "a": "Michael Caine"
+    },
+    {
+      "q": "I'm not going to stop the wheel. I'm going to break the wheel.",
+      "a": "Daenerys Targaryen"
+    },
+    {
+      "q": "Ew, David!",
+      "a": "Alexis Rose"
+    },
+    {
+      "q": "I love that journey for me.",
+      "a": "Alexis Rose"
+    },
+    {
+      "q": "Sir, this is a Wendy's restaurant.",
+      "a": "The Office"
+    },
+    {
+      "q": "I’m ready to party, are you ready to party?",
+      "a": "Kristen Wiig"
+    },
+    {
+      "q": "Help me, I'm poor.",
+      "a": "Kristen Wiig"
+    },
+    {
+      "q": "I am the danger.",
+      "a": "Walter White"
+    },
+    {
+      "q": "A spoonful of sugar helps the medicine go down.",
+      "a": "Julie Andrews"
+    },
+    {
+      "q": "Supercalifragilisticexpialidocious!",
+      "a": "Julie Andrews"
+    },
+    {
+      "q": "The rain in Spain stays mainly in the plain.",
+      "a": "Audrey Hepburn"
+    },
+    {
+      "q": "I could have danced all night!",
+      "a": "Audrey Hepburn"
     }
   ],
   "text": [
@@ -1127,6 +1175,34 @@
     {
       "q": "If you wanna be my lover, you gotta get with my friends.",
       "a": "Spice Girls"
+    },
+    {
+      "q": "I am a material girl.",
+      "a": "Madonna"
+    },
+    {
+      "q": "If you wanna make the world a better place, take a look at yourself and make a change.",
+      "a": "Michael Jackson"
+    },
+    {
+      "q": "You can't win, you can't break even, and you can't get out of the game.",
+      "a": "Michael Jackson"
+    },
+    {
+      "q": "You may shoot me with your words, you may cut me with your eyes.",
+      "a": "Maya Angelou"
+    },
+    {
+      "q": "I am the master of my fate, I am the captain of my soul.",
+      "a": "William Ernest Henley"
+    },
+    {
+      "q": "What happens to a dream deferred? Does it dry up like a raisin in the sun?",
+      "a": "Langston Hughes"
+    },
+    {
+      "q": "Well behaved women rarely make history.",
+      "a": "Laurel Thatcher Ulrich"
     }
   ]
 }
