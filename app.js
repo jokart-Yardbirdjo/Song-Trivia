@@ -6,6 +6,7 @@ import { handleHostSetup, handleJoinScreen, createRoom, joinRoom, startMultiplay
 import * as SongTrivia from './gameLogic.js';
 import * as FastMath from './mathLogic.js';
 import * as Consensus from './consensusLogic.js';
+import * as QuoteTrivia from './quoteLogic.js';
 
 // Attach to window so buttons can always find the active cartridge
 window.activeCartridge = SongTrivia; 
@@ -23,6 +24,7 @@ window.loadCartridge = (gameId) => {
     // 👇 The updated routing logic 👇
     if (gameId === 'fast_math') window.activeCartridge = FastMath;
     else if (gameId === 'consensus') window.activeCartridge = Consensus;
+    else if (gameId === 'who_said_it') window.activeCartridge = QuoteTrivia;
     else window.activeCartridge = SongTrivia;
     
     state.activeCartridgeId = gameId;
