@@ -1,0 +1,271 @@
+// quoteLogic.js
+import { db } from './firebase.js';
+import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
+
+export const manifest = {
+    id: "who_said_it",
+    title: "WHO SAID IT?",
+    subtitle: "Pop Culture & Iconic Quotes",
+    hasDaily: false,
+    modes: [
+        { id: "celeb", title: "🎤 Celebs & Creators", desc: "Celebrities, viral Tweets, and TikTok sounds." },
+        { id: "movie", title: "🎬 Screen & Stage", desc: "Iconic lines from Movies, Netflix, and TV shows." },
+        { id: "text", title: "📖 Lyrics & Lore", desc: "Guess the Song Lyric or Book Quote." }
+    ],
+    levels: [
+        { id: "easy", title: "🟢 Casual", desc: "20s. Standard pacing." },
+        { id: "hard", title: "🔴 Speedrun", desc: "10s. Pure reflex." }
+    ],
+    clientUI: "multiple-choice" 
+};
+
+// Required hooks to prevent platform errors
+export function resetStats() { console.log("Stats reset not yet implemented for Quotes"); }
+export function handleStop() { return; }
+export function forceLifeline() { return; }
+export function startDailyChallenge() { alert("Daily mode coming soon!"); }
+export function shareChallenge() { alert("Share feature coming soon!"); }
+
+export async function startGame() {
+    state.numPlayers = state.isMultiplayer ? state.numPlayers : 1; 
+    state.timeLimit = state.gameState.level === 'easy' ? 20 : 10; 
+    state.maxRounds = state.gameState.rounds;
+    state.curIdx = 0;
+    state.rawScores = new Array(state.numPlayers).fill(0);
+    state.streaks = new Array(state.numPlayers).fill(0);
+
+    // Platform UI Prep
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('play-screen').classList.remove('hidden');
+    document.querySelectorAll('.header-btn').forEach(btn => btn.classList.add('hidden'));
+    document.getElementById('guess-fields').classList.add('hidden');
+    document.getElementById('btn-container').classList.add('hidden');
+    document.getElementById('visualizer').classList.add('hidden');
+
+    if (!state.isHost) {
+        document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]};"><div class="p-name" style="color:${colors[0]}">SCORE</div><div class="p-pts" style="color:var(--dark-text)">0</div><div class="p-streak" style="opacity:0">🔥 0</div></div>`;
+    }
+
+    document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.5rem; margin-top:40px;">Loading Database...</div>`;
+
+    try {
+        const res = await fetch('db_quotes.json');
+        const dbData = await res.json();
+        const mode = state.gameState.mode;
+        
+        let pool = dbData[mode] || [];
+        if(pool.length < state.maxRounds) {
+            alert(`Not enough quotes in ${mode} category. Lower rounds or add to DB!`);
+            location.reload(); return;
+        }
+
+        // Shuffle and slice for the game
+        state.songs = pool.sort(() => 0.5 - Math.random()).slice(0, state.maxRounds);
+        
+        // Build a global pool of authors for wrong answers
+        state.globalPool = [];
+        Object.keys(dbData).forEach(k => {
+            dbData[k].forEach(item => { if(!state.globalPool.includes(item.a)) state.globalPool.push(item.a); });
+        });
+
+        nextRound();
+    } catch(e) {
+        console.error(e);
+        alert("Failed to load db_quotes.json!");
+        location.reload();
+    }
+}
+
+function nextRound() {
+    if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
+    state.isProcessing = false;
+    const currentData = state.songs[state.curIdx];
+    const tag = document.getElementById('active-player');
+
+    // Generate 3 random wrong answers
+    let options = [{ str: currentData.a, isCorrect: true }];
+    let wrongPool = state.globalPool.filter(a => a !== currentData.a).sort(() => 0.5 - Math.random());
+    for(let i=0; i<3; i++) {
+        if(wrongPool[i]) options.push({ str: wrongPool[i], isCorrect: false });
+    }
+    options = options.sort(() => 0.5 - Math.random());
+
+    if (state.isMultiplayer && state.isHost) {
+        document.getElementById('score-board').innerHTML = ''; 
+        tag.innerText = `QUOTE ${state.curIdx + 1}/${state.maxRounds}`;
+        tag.style.color = "var(--primary)"; tag.style.borderColor = "var(--primary)";
+             
+        db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
+        
+        document.getElementById('feedback').innerHTML = `
+            <div class="prompt-text" style="font-style:italic;">"${currentData.q}"</div>
+            <div id="host-lock-status" style="color:var(--primary); font-size:1.3rem; font-weight:bold; margin-top:20px;">LOCKED IN: 0 / ${state.numPlayers}</div>
+        `;
+
+        db.ref(`rooms/${state.roomCode}/currentMC`).set(options);
+        db.ref(`rooms/${state.roomCode}/currentPrompt`).set(`"${currentData.q}"`);
+        
+        db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
+            if (snap.exists()) {
+                let updates = {};
+                snap.forEach(p => { updates[`${p.key}/status`] = 'guessing'; updates[`${p.key}/guess`] = null; });
+                db.ref(`rooms/${state.roomCode}/players`).update(updates);
+            }
+        });
+
+    } else {
+        tag.innerText = `ROUND ${state.curIdx + 1}/${state.maxRounds}`;
+        tag.style.color = "var(--primary)"; tag.style.borderColor = "var(--primary)";
+              
+        document.getElementById('feedback').innerHTML = `<div class="prompt-text" style="font-style:italic; font-size: 2rem;">"${currentData.q}"</div>`;
+        
+        const mcContainer = document.getElementById('mc-fields');
+        mcContainer.innerHTML = ''; mcContainer.classList.remove('hidden');
+        
+        options.forEach(opt => {
+            const btn = document.createElement('button'); 
+            btn.className = 'mc-btn'; btn.innerText = opt.str;
+            btn.onclick = (e) => evaluateGuess(opt.isCorrect, e.target); 
+            mcContainer.appendChild(btn);
+        });
+    }
+
+    state.timeLeft = state.timeLimit;
+    const timerElement = document.getElementById('timer');
+    timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
+    const timerFill = document.getElementById('timer-bar-fill');
+
+    state.timerId = setInterval(() => {
+        state.timeLeft--;
+        let percentage = (state.timeLeft / state.timeLimit) * 100;
+        if(timerFill) timerFill.style.width = `${percentage}%`;
+
+        if (state.isMultiplayer && state.isHost) db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
+
+        if (state.timeLeft <= 3) {
+            if(timerFill) timerFill.style.backgroundColor = 'var(--fail)';
+            sfxTick.play().catch(()=>{});
+        }
+
+        if (state.timeLeft <= 0) {
+            clearInterval(state.timerId);
+            if (state.isMultiplayer && state.isHost) {
+                db.ref(`rooms/${state.roomCode}/players`).once('value', snap => evaluateMultiplayerRound(snap.val()));
+            } else {
+                evaluateGuess(false, null); 
+            }
+        }
+    }, 1000);
+}
+
+export function evaluateGuess(isCorrect, clickedBtn = null) {
+    if (state.isProcessing) return;
+    state.isProcessing = true;
+    clearInterval(state.timerId);
+
+    document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
+    let roundPts = 0;
+
+    if (isCorrect) {
+        if(clickedBtn) clickedBtn.classList.add('correct');
+        state.streaks[0]++;
+        roundPts = state.timeLeft * 10; 
+        if (state.streaks[0] > 0 && state.streaks[0] % 3 === 0) roundPts += 50;
+        
+        document.getElementById('feedback').innerHTML = `<div style="color:var(--success); font-size:1.5rem; font-weight:bold;">✅ CORRECT! +${roundPts}</div>`;
+        state.rawScores[0] += roundPts;
+        sfxCheer.currentTime = 0; sfxCheer.play().catch(()=>{});
+    } else {
+        if(clickedBtn) clickedBtn.classList.add('wrong');
+        
+        const realAuthor = state.songs[state.curIdx].a;
+        document.querySelectorAll('.mc-btn').forEach(b => {
+            if(b.innerText === realAuthor) b.classList.add('correct');
+        });
+        
+        state.streaks[0] = 0;
+        sfxBuzzer.currentTime = 0; sfxBuzzer.play().catch(()=>{});
+        document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div><div style="color:var(--text-muted);">It was ${realAuthor}</div>`;
+    }
+
+    document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts" style="color:var(--dark-text);">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
+    
+    state.curIdx++; 
+    setTimeout(nextRound, 2500); 
+}
+
+export function evaluateMultiplayerRound(players) {
+    if (state.isProcessing) return;
+    state.isProcessing = true;
+    clearInterval(state.timerId);
+
+    let fbHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:15px; font-weight:bold;">`;
+    const playerIds = Object.keys(players);
+    const realAuthor = state.songs[state.curIdx].a;
+    
+    playerIds.forEach((pid, index) => {
+        const p = players[pid];
+        let roundPts = 0;
+        let correct = (p.guess && p.guess.isMC && p.guess.correct);
+
+        if (correct) {
+            state.streaks[index]++;
+            roundPts = p.guess.time * 10;
+            if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundPts += 50; 
+            
+            fbHTML += `<div style="color:var(--success); font-size:1.1rem; font-weight:bold;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
+            state.rawScores[index] += roundPts;
+        } else {
+            fbHTML += `<div style="color:var(--fail); font-size:1.1rem; font-weight:bold;">❌ ${p.nickname || p.name || "Player"}: 0</div>`;
+            state.streaks[index] = 0;
+        }
+    });
+
+    fbHTML += `</div><div style="font-size:1.2rem; color:var(--text-muted);">Answer: <strong style="color:var(--primary);">${realAuthor}</strong></div>`;
+    document.getElementById('feedback').innerHTML = fbHTML; 
+    
+    state.curIdx++; 
+    setTimeout(nextRound, 4000); 
+}
+
+function endGameSequence() {
+    document.getElementById('play-screen').classList.add('hidden');
+    document.getElementById('final-screen').classList.remove('hidden');
+    document.getElementById('final-subtitle').innerText = "Scores Normalized to 1000";
+    
+    const maxRawPossible = state.maxRounds * 250; 
+    const normalizedScores = state.rawScores.map(s => Math.min(1000, Math.round((s / maxRawPossible) * 1000)));
+    const maxScore = Math.max(...normalizedScores);
+    
+    if (state.isMultiplayer && state.isHost) {
+        db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
+            const players = snap.val();
+            const pIds = Object.keys(players);
+            let finalResults = [];
+            
+            pIds.forEach((pid, index) => {
+                finalResults.push({ name: players[pid].name, score: normalizedScores[index], id: pid });
+                db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: normalizedScores[index] });
+            });
+            
+            finalResults.sort((a, b) => b.score - a.score); 
+            db.ref(`rooms/${state.roomCode}/finalLeaderboard`).set(finalResults);
+            
+            let podiumHTML = `<div style="margin-top: 15px; text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 2px solid var(--border-light);"><h3 style="margin-top:0; color:var(--primary); text-align:center; text-transform:uppercase; margin-bottom:15px;">Final Standings</h3>`;
+            finalResults.forEach((p, idx) => {
+                let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
+                let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : 'var(--text-muted)');
+                podiumHTML += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid var(--border-light); font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="font-family:'Courier New', monospace; color: var(--dark-text);">${p.score}</span></div>`;
+            });
+            podiumHTML += `</div>`;
+            
+            document.getElementById('winner-text').innerHTML = podiumHTML;
+            document.getElementById('final-grid').innerHTML = ""; 
+            db.ref(`rooms/${state.roomCode}/state`).set('finished');
+        });
+    } else {
+        document.getElementById('winner-text').innerText = `🏆 Final Score: ${maxScore} Pts`;
+        document.getElementById('winner-text').style.color = colors[0];
+        document.getElementById('final-grid').innerHTML = "";
+    }
+}
