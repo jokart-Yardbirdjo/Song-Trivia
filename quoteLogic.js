@@ -29,6 +29,19 @@ function createPRNG(seed) {
     }
 }
 
+// Deterministic Fisher-Yates Shuffle
+function deterministicShuffle(array, prng) {
+    let currentIndex = array.length, randomIndex;
+    while (currentIndex !== 0) {
+        // Pick a remaining element using our seeded math
+        randomIndex = Math.floor(prng() * currentIndex);
+        currentIndex--;
+        // Swap it with the current element
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+    }
+    return array;
+}
+
 export function resetStats() { 
     if(confirm("Are you sure you want to reset your Who Said It stats?")) {
         state.userStats.who_said_it = { gamesPlayed: 0, highScore: 0 };
@@ -118,7 +131,7 @@ export async function startGame() {
         }
 
         // Shuffle and slice for the game using PRNG
-        state.songs = pool.sort(() => 0.5 - state.prng()).slice(0, state.maxRounds);
+        state.songs = deterministicShuffle([...pool], state.prng).slice(0, state.maxRounds);
         
         // Build a global pool of authors for wrong answers
         state.globalPool = [];
@@ -140,13 +153,17 @@ function nextRound() {
     const currentData = state.songs[state.curIdx];
     const tag = document.getElementById('active-player');
 
-    // Generate 3 random wrong answers using PRNG
+    // Generate 3 random wrong answers using deterministic shuffle
     let options = [{ str: currentData.a, isCorrect: true }];
-    let wrongPool = state.globalPool.filter(a => a !== currentData.a).sort(() => 0.5 - state.prng());
+    
+    let filteredGlobal = state.globalPool.filter(a => a !== currentData.a);
+    let wrongPool = deterministicShuffle(filteredGlobal, state.prng);
+    
     for(let i=0; i<3; i++) {
         if(wrongPool[i]) options.push({ str: wrongPool[i], isCorrect: false });
     }
-    options = options.sort(() => 0.5 - state.prng());
+    
+    options = deterministicShuffle(options, state.prng);
 
     if (state.isMultiplayer && state.isHost) {
         document.getElementById('score-board').innerHTML = ''; 
