@@ -27,9 +27,9 @@ export const manifest = {
     ],
     levels: [
         { id: "easy",         title: "🟢 Easy",         desc: "20s per round. One wrong option fades at 10s." },
-        { id: "medium",       title: "🟡 Standard",     desc: "12s per round. No help." },
+        // { id: "medium",       title: "🟡 Standard",     desc: "12s per round. No help." },
         { id: "hard",         title: "🔴 Lightning",    desc: "6s per round. Pure reflexes." },
-        { id: "sudden_death", title: "💀 Sudden Death", desc: "Unlimited rounds. One wrong answer ends it all." }
+        { id: "sudden_death", title: "💀 Sudden Death", desc: "10s per round. One wrong answer ends it all." }
     ],
     clientUI: "multiple-choice"
 };
@@ -272,9 +272,9 @@ export function startGame() {
     if      (state.gameState.level === 'easy')   state.timeLimit = 20;
     else if (state.gameState.level === 'medium') state.timeLimit = 12;
     else if (state.gameState.level === 'hard')   state.timeLimit = 6;
-    else                                         state.timeLimit = 0; // sudden death: no timer
+    else                                         state.timeLimit = 10; // 10s strict timer for Sudden Death
 
-    state.maxRounds    = isSuddenDeath() ? 9999 : state.gameState.rounds;
+    state.maxRounds    = state.gameState.rounds; // Respect the lobby round setting
     state.sdRoundsAlive = 0;
 
     state.doubleRounds = [];
@@ -385,11 +385,6 @@ export function nextRound() {
     // ── Timer ──
     const timerEl = document.getElementById('timer');
     timerEl.style.color = '';
-
-    if (isSuddenDeath()) {
-        timerEl.innerHTML = ''; // no timer bar — the tension lives in the decision
-        return;
-    }
 
     state.timeLeft  = state.timeLimit;
     timerEl.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
@@ -626,8 +621,11 @@ function endGameSequence() {
 
     if (isSD) {
         scoreDisplay   = state.sdRoundsAlive;
-        gradientStyle  = 'linear-gradient(135deg, #d63031, #6e0000)';
-        hypeText = scoreDisplay >= 20 ? "Untouchable! 🏆"
+        const beatGauntlet = scoreDisplay >= state.maxRounds;
+        
+        // Give them a gold gradient if they survived the whole requested game
+        gradientStyle  = beatGauntlet ? 'linear-gradient(135deg, #f39c12, #d35400)' : 'linear-gradient(135deg, #d63031, #6e0000)';
+        hypeText = beatGauntlet ? "GAUNTLET CLEARED! 🏆"
                  : scoreDisplay >= 10 ? "Impressive Run! 🔥"
                  : scoreDisplay >= 5  ? "Decent Effort! 💪"
                  : "One and done! 😬";
