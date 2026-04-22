@@ -110,6 +110,11 @@ export function shareChallenge() {
 }
 
 export async function startGame() {
+    // 🧹 GARBAGE COLLECTION: Wipe leftover data from previous cartridges
+    state.songs = [];
+    state.globalPool = [];
+    state.matchHistory = [];
+    
     state.numPlayers = state.isMultiplayer ? state.numPlayers : 1; 
     state.timeLimit = state.gameState.level === 'easy' ? 20 : 10; 
     state.maxRounds = state.gameState.rounds;
