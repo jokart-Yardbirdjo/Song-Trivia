@@ -12,18 +12,25 @@ export function setMode(mode, element) {
     const customInput = document.getElementById('custom-input');
     const currentCartridgeId = window.activeCartridge ? window.activeCartridge.manifest.id : '';
 
-    if (subOptions[mode]) {
+    // ==========================================
+    // 1. SONG TRIVIA SUB-MENU
+    // ==========================================
+    if (currentCartridgeId === 'song_trivia' && subOptions[mode]) {
         state.gameState.sub = subOptions[mode][0]; 
         document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
         customInput.classList.add('hidden');
         customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
         customInput.type = "text";
         renderSubPills();
-    } else if (currentCartridgeId === 'who_said_it') {
-        // 👇 WHO SAID IT SUB-PILL INJECTION 👇
+    } 
+    // ==========================================
+    // 2. WHO SAID IT SUB-MENU (FIXED)
+    // ==========================================
+    else if (currentCartridgeId === 'who_said_it') {
         state.gameState.sub = 'party_pack';
         document.getElementById('sub-label').innerText = "Select Data Source";
         const container = document.getElementById('sub-pills');
+        
         if (container) {
             container.innerHTML = '';
             
@@ -43,18 +50,24 @@ export function setMode(mode, element) {
         customInput.classList.add('hidden');
     }
 
+    // ==========================================
+    // 3. API BOX VISIBILITY CONTROLS
+    // ==========================================
     if (mode === 'ai_infinite' && currentCartridgeId === 'consensus') {
         customInput.classList.remove('hidden');
         customInput.placeholder = "Paste your OpenAI API Key...";
         customInput.type = "password"; 
         const savedKey = localStorage.getItem('consensus_openai_key');
         if (savedKey) customInput.value = savedKey;
-    } else if (mode === 'party_pack') {
+    } else if (mode === 'party_pack' && currentCartridgeId === 'consensus') {
         customInput.classList.add('hidden');
-    } else if (currentCartridgeId !== 'who_said_it' && !subOptions[mode]) {
+    } else if (currentCartridgeId !== 'who_said_it' && currentCartridgeId !== 'song_trivia' && currentCartridgeId !== 'consensus') {
         if (customInput) customInput.classList.add('hidden');
     }
 
+    // ==========================================
+    // 4. DIFFICULTY LEVEL LOCK (Song Trivia Only)
+    // ==========================================
     const levelGroup = document.getElementById('level-group');
     if (mode === 'movie' && currentCartridgeId === 'song_trivia') {
         setLevel('medium', document.getElementById('lvl-medium'));
@@ -95,8 +108,9 @@ export function setSub(val, element) {
         customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
         customInput.type = "text";
         customInput.focus();
-    } else if (val === 'ai_infinite' && currentCartridgeId === 'who_said_it') {
-        // 👇 ONLY SHOW THE BOX IF THEY CLICK THE AI PILL 👇
+    } 
+    // 👇 THIS IS WHAT TRIGGERS THE API BOX FOR "WHO SAID IT" 👇
+    else if (val === 'ai_infinite' && currentCartridgeId === 'who_said_it') {
         customInput.classList.remove('hidden');
         customInput.placeholder = "Paste your OpenAI API Key (sk-...)";
         customInput.type = "password";
@@ -177,18 +191,22 @@ export function buildSetupScreen(manifest) {
         levelGroup.appendChild(card);
     });
 
-    state.gameState.mode = manifest.modes[0].id;
-    state.gameState.level = manifest.levels[0].id;
-    
     const isSongTrivia = manifest.id === 'song_trivia';
     const isWhoSaidIt = manifest.id === 'who_said_it';
     
-    // 👇 UNHIDE THE SUB-SECTION FOR BOTH SONG TRIVIA AND WHO SAID IT 👇
     document.getElementById('sub-selection-area').classList.toggle('hidden', !(isSongTrivia || isWhoSaidIt));
     document.getElementById('players-rounds-area').classList.remove('hidden');
 
     const dailyContainer = document.getElementById('daily-btn-top').parentElement;
     if (dailyContainer) dailyContainer.classList.toggle('hidden', !isSongTrivia);
+
+    // 👇 THE LOAD FIX: Force the UI to draw the sub-menu immediately on load! 👇
+    if (modeGroup.firstChild) {
+        window.setMode(manifest.modes[0].id, modeGroup.firstChild);
+    } else {
+        state.gameState.mode = manifest.modes[0].id;
+    }
+    state.gameState.level = manifest.levels[0].id;
 }
 
 export function populateStats() {} 
