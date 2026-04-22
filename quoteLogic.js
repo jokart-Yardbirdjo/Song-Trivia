@@ -462,3 +462,41 @@ function endGameSequence() {
     
     localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 }
+
+export function onModeSelect(mode) {
+    state.gameState.sub = 'party_pack';
+    document.getElementById('sub-label').innerText = "Select Data Source";
+    const container = document.getElementById('sub-pills');
+    
+    if (container) {
+        container.innerHTML = '';
+        const pillParty = document.createElement('div');
+        pillParty.className = `pill pill-wide active`;
+        pillParty.innerText = "Party Pack";
+        pillParty.onclick = () => window.setSub('party_pack', pillParty);
+
+        const pillAI = document.createElement('div');
+        pillAI.className = `pill pill-wide`;
+        pillAI.innerText = "Infinite AI";
+        pillAI.onclick = () => window.setSub('ai_infinite', pillAI);
+
+        container.appendChild(pillParty);
+        container.appendChild(pillAI);
+    }
+    document.getElementById('custom-input').classList.add('hidden');
+    document.getElementById('sub-selection-area').classList.remove('hidden');
+}
+
+export function onSubSelect(val) {
+    const customInput = document.getElementById('custom-input');
+    if (val === 'ai_infinite') {
+        customInput.classList.remove('hidden');
+        customInput.placeholder = "Paste your OpenAI API Key (sk-...)";
+        customInput.type = "password";
+        const savedKey = localStorage.getItem('consensus_openai_key');
+        if (savedKey) customInput.value = savedKey;
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+    }
+}
