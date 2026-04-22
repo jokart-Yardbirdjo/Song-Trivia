@@ -337,7 +337,7 @@ export async function evaluateMultiplayerRound(players) {
             newScore: (p.score || 0) + points
         });
     });
-
+    state.curIdx++;
     window.finalizeMultiplayerRound(results);
     document.getElementById('feedback').innerHTML = `<h2 style="color:var(--brand)">ROUND OVER</h2><p>Check your phones!</p>`;
 }
