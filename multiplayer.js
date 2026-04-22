@@ -268,26 +268,51 @@ export async function joinRoom() {
     });
 }
 
+// multiplayer.js
+
 export async function startMultiplayerGame() {
     document.getElementById('host-lobby-screen').classList.add('hidden');
-    await db.ref(`rooms/${state.roomCode}`).update({ state: 'playing', currentRound: 1, mode: state.gameState.mode });
+    
+    // 1. Initialize the Room State
+    await db.ref(`rooms/${state.roomCode}`).update({ 
+        state: 'playing', 
+        currentRound: 1, 
+        mode: state.gameState.mode,
+        timeLeft: state.timeLimit // Set initial time
+    });
+    
     await db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'loading' });
 
+    // 2. The Master Network Clock (Only the Host runs this)
+    let masterClock = setInterval(async () => {
+        const snap = await db.ref(`rooms/${state.roomCode}/timeLeft`).once('value');
+        let time = snap.val();
+        
+        if (time > 0) {
+            time--;
+            await db.ref(`rooms/${state.roomCode}/timeLeft`).set(time);
+        } else {
+            clearInterval(masterClock);
+            // Timer hit zero! Force evaluation of whoever answered
+            const playersSnap = await db.ref(`rooms/${state.roomCode}/players`).once('value');
+            window.evaluateMultiplayerRound(playersSnap.val());
+        }
+    }, 1000);
+
+    // 3. The Lock-In Listener (Fires if everyone is ready BEFORE time runs out)
     db.ref(`rooms/${state.roomCode}/players`).on('value', (snap) => {
-        if (!state.isHost || !snap.exists()) return;
+        if (!state.isHost || !snap.exists() || state.isProcessing) return;
         
         const players = snap.val();
-        let allLocked = true; let lockedCount = 0; let totalPlayers = 0;
+        let allLocked = true; let totalPlayers = 0;
         
         Object.keys(players).forEach(pid => {
-            const p = players[pid]; totalPlayers++;
-            if (p.status === 'locked') lockedCount++; else allLocked = false;
+            totalPlayers++;
+            if (players[pid].status !== 'locked') allLocked = false;
         });
 
-        const lockStatusDiv = document.getElementById('host-lock-status');
-        if (lockStatusDiv) lockStatusDiv.innerText = `LOCKED IN: ${lockedCount} / ${totalPlayers}`;
-
-        if (allLocked && totalPlayers > 0 && !state.isProcessing) {
+        if (allLocked && totalPlayers > 0) {
+            clearInterval(masterClock); // Stop the clock!
             window.evaluateMultiplayerRound(players); 
         }
     });
