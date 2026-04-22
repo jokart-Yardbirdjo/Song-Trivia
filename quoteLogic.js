@@ -404,8 +404,17 @@ function endGameSequence() {
             db.ref(`rooms/${state.roomCode}/state`).set('finished');
         });
     } else {
-        document.getElementById('winner-text').innerText = `🏆 Final Score: ${maxScore} Pts`;
-        document.getElementById('winner-text').style.color = colors[0];
+        // Vibrant Gradient Score Card for Solo Who Said It
+        const hypeText = maxScore > 800 ? "Pop Culture Icon! 👑" : (maxScore > 500 ? "Great Memory! 🧠" : "Better Luck Next Time! 🎬");
+        
+        document.getElementById('winner-text').innerHTML = `
+            <div style="background: linear-gradient(135deg, var(--p2), var(--primary)); padding: 50px 20px; border-radius: 24px; color: white; box-shadow: 0 12px 24px rgba(110, 69, 226, 0.2); margin: 30px 0; text-align: center;">
+                <div style="font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 10px;">Final Score</div>
+                <div style="font-size: 5.5rem; font-weight: 900; line-height: 1; text-shadow: 2px 4px 10px rgba(0,0,0,0.2);">${maxScore}</div>
+                <div style="font-size: 1.2rem; font-weight: 600; margin-top: 15px; opacity: 0.9;">${hypeText}</div>
+            </div>
+        `;
+        document.getElementById('winner-text').style.color = ''; 
         document.getElementById('final-grid').innerHTML = "";
     }
     
