@@ -43,17 +43,28 @@ export function setupDailyButton() {
     const dailyBtn = document.getElementById('daily-btn-top');
     if(!dailyBtn) return;
     
-    const isPlayed = state.userStats.song_trivia ? state.userStats.song_trivia.playedDailyToday : false;
+    // 👇 The clean delegation: Ask the cartridge directly!
+    const isPlayed = (window.activeCartridge && typeof window.activeCartridge.hasPlayedDaily === 'function') 
+        ? window.activeCartridge.hasPlayedDaily() 
+        : false;
     
     if (isPlayed) {
         dailyBtn.innerText = "🌍 TODAY THREE (PLAYED)";
         dailyBtn.style.opacity = "0.5";
         dailyBtn.style.cursor = "not-allowed";
-        dailyBtn.onclick = (e) => { e.preventDefault(); alert("You already crushed today's challenge! Come back tomorrow."); };
+        dailyBtn.onclick = (e) => { 
+            e.preventDefault(); 
+            alert("You already crushed today's challenge! Come back tomorrow."); 
+        };
     } else {
         dailyBtn.innerText = "🌍 PLAY TODAY THREE";
         dailyBtn.style.opacity = "1";
-        dailyBtn.onclick = () => window.activeCartridge.startDailyChallenge();
+        dailyBtn.style.cursor = "pointer";
+        dailyBtn.onclick = () => {
+            if (window.activeCartridge && typeof window.activeCartridge.startDailyChallenge === 'function') {
+                window.activeCartridge.startDailyChallenge();
+            }
+        };
     }
 }
 
