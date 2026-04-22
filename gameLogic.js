@@ -46,6 +46,61 @@ export function resetStats() {
     }
 }
 
+export function renderStatsUI(stStats, container) {
+    let acc = stStats.totalGuesses > 0 ? Math.round((stStats.correctGuesses / stStats.totalGuesses) * 100) : 0;
+    const tr = stStats.trophies || {};
+    
+    container.innerHTML = `
+        <h2 style="color:var(--brand); margin-top:0; text-align:center; border-bottom:1px solid #333; padding-bottom:15px;">Trivia Locker Room</h2>
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Games Played</div>
+                <div class="stat-val">${stStats.gamesPlayed || 0}</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Accuracy</div>
+                <div class="stat-val" style="color:var(--brand)">${acc}%</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">High Score</div>
+                <div class="stat-val" style="color:var(--p1)">${stStats.hsText || 0}</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">Sniper Hits</div>
+                <div class="stat-val" style="color:var(--p3)">${stStats.sniperHits || 0}</div>
+            </div>
+        </div>
+
+        <h3 style="color:#fff; font-size:1rem; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:15px;">Trophy Cabinet</h3>
+        
+        <div class="trophy-row ${tr.perf ? 'unlocked' : ''}">
+            <div class="trophy-icon">🏆</div>
+            <div class="trophy-text"><h4>The Perfectionist</h4><p>Score higher than 900/1000 points.</p></div>
+        </div>
+        <div class="trophy-row ${tr.mara ? 'unlocked' : ''}">
+            <div class="trophy-icon">🏃</div>
+            <div class="trophy-text"><h4>The Marathoner</h4><p>Complete a grueling 20-Round game.</p></div>
+        </div>
+        <div class="trophy-row ${tr.snip ? 'unlocked' : ''}">
+            <div class="trophy-icon">🎯</div>
+            <div class="trophy-text"><h4>The Sniper</h4><p>Guess 10 songs correctly in under 3 seconds.</p></div>
+        </div>
+        <div class="trophy-row ${tr.streak ? 'unlocked' : ''}">
+            <div class="trophy-icon">🔥</div>
+            <div class="trophy-text"><h4>The Daily Devotee</h4><p>Play 5 days in a row.</p></div>
+        </div>
+        <div class="trophy-row ${tr.expl ? 'unlocked' : ''}">
+            <div class="trophy-icon">🗺️</div>
+            <div class="trophy-text"><h4>The Explorer</h4><p>Play all 3 game modes.</p></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+            <button class="btn btn-main" onclick="hideModal('stats-modal')" style="flex: 1; margin-right: 10px;">Close</button>
+            <button class="btn btn-reset" onclick="if(window.activeCartridge && window.activeCartridge.resetStats) { window.activeCartridge.resetStats(); hideModal('stats-modal'); }" style="margin-top: 0; padding: 16px;">Reset</button>
+        </div>
+    `;
+}
+
 export async function startDailyChallenge() {
     state.isDailyMode = true;
     state.numPlayers = 1; state.roundsPerPlayer = 3; state.maxRounds = 3; 
