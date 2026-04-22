@@ -9,73 +9,20 @@ export function setMode(mode, element) {
     element.classList.add('active');
     state.gameState.mode = mode;
 
-    const customInput = document.getElementById('custom-input');
-    const currentCartridgeId = window.activeCartridge ? window.activeCartridge.manifest.id : '';
-
-    // ==========================================
-    // 1. SONG TRIVIA SUB-MENU
-    // ==========================================
-    if (currentCartridgeId === 'song_trivia' && subOptions[mode]) {
-        state.gameState.sub = subOptions[mode][0]; 
-        document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
-        customInput.classList.add('hidden');
-        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
-        customInput.type = "text";
-        renderSubPills();
-    } 
-    // ==========================================
-    // 2. WHO SAID IT SUB-MENU (FIXED)
-    // ==========================================
-    else if (currentCartridgeId === 'who_said_it') {
-        state.gameState.sub = 'party_pack';
-        document.getElementById('sub-label').innerText = "Select Data Source";
-        const container = document.getElementById('sub-pills');
-        
-        if (container) {
-            container.innerHTML = '';
-            
-            const pillParty = document.createElement('div');
-            pillParty.className = `pill pill-wide active`;
-            pillParty.innerText = "Party Pack";
-            pillParty.onclick = () => window.setSub('party_pack', pillParty);
-
-            const pillAI = document.createElement('div');
-            pillAI.className = `pill pill-wide`;
-            pillAI.innerText = "Infinite AI";
-            pillAI.onclick = () => window.setSub('ai_infinite', pillAI);
-
-            container.appendChild(pillParty);
-            container.appendChild(pillAI);
-        }
-        customInput.classList.add('hidden');
+    // Delegate to the Cartridge!
+    if (window.activeCartridge && typeof window.activeCartridge.onModeSelect === 'function') {
+        window.activeCartridge.onModeSelect(mode);
     }
+}
 
-    // ==========================================
-    // 3. API BOX VISIBILITY CONTROLS
-    // ==========================================
-    if (mode === 'ai_infinite' && currentCartridgeId === 'consensus') {
-        customInput.classList.remove('hidden');
-        customInput.placeholder = "Paste your OpenAI API Key...";
-        customInput.type = "password"; 
-        const savedKey = localStorage.getItem('consensus_openai_key');
-        if (savedKey) customInput.value = savedKey;
-    } else if (mode === 'party_pack' && currentCartridgeId === 'consensus') {
-        customInput.classList.add('hidden');
-    } else if (currentCartridgeId !== 'who_said_it' && currentCartridgeId !== 'song_trivia' && currentCartridgeId !== 'consensus') {
-        if (customInput) customInput.classList.add('hidden');
-    }
+export function setSub(val, element) {
+    document.querySelectorAll('#sub-pills .pill').forEach(el => el.classList.remove('active'));
+    element.classList.add('active');
+    state.gameState.sub = val;
 
-    // ==========================================
-    // 4. DIFFICULTY LEVEL LOCK (Song Trivia Only)
-    // ==========================================
-    const levelGroup = document.getElementById('level-group');
-    if (mode === 'movie' && currentCartridgeId === 'song_trivia') {
-        setLevel('medium', document.getElementById('lvl-medium'));
-        levelGroup.style.opacity = '0.5';
-        levelGroup.style.pointerEvents = 'none';
-    } else {
-        levelGroup.style.opacity = '1';
-        levelGroup.style.pointerEvents = 'auto';
+    // Delegate to the Cartridge!
+    if (window.activeCartridge && typeof window.activeCartridge.onSubSelect === 'function') {
+        window.activeCartridge.onSubSelect(val);
     }
 }
 
@@ -93,33 +40,6 @@ export function renderSubPills() {
         pill.onclick = () => setSub(opt, pill);
         container.appendChild(pill);
     });
-}
-
-export function setSub(val, element) {
-    document.querySelectorAll('#sub-pills .pill').forEach(el => el.classList.remove('active'));
-    element.classList.add('active');
-    state.gameState.sub = val;
-
-    const customInput = document.getElementById('custom-input');
-    const currentCartridgeId = window.activeCartridge ? window.activeCartridge.manifest.id : '';
-
-    if (val === 'custom') {
-        customInput.classList.remove('hidden');
-        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
-        customInput.type = "text";
-        customInput.focus();
-    } 
-    // 👇 THIS IS WHAT TRIGGERS THE API BOX FOR "WHO SAID IT" 👇
-    else if (val === 'ai_infinite' && currentCartridgeId === 'who_said_it') {
-        customInput.classList.remove('hidden');
-        customInput.placeholder = "Paste your OpenAI API Key (sk-...)";
-        customInput.type = "password";
-        const savedKey = localStorage.getItem('consensus_openai_key');
-        if (savedKey) customInput.value = savedKey;
-        customInput.focus();
-    } else {
-        customInput.classList.add('hidden');
-    }
 }
 
 export function setPill(groupId, element, val) {
