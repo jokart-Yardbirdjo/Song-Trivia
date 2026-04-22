@@ -5,6 +5,7 @@ export const state = {
     roomCode: "",
     myPlayerId: "",
     isGracePeriod: false,
+    currentCorrectAnswer: null,
 
     gameState: {
         mode: 'genre',
