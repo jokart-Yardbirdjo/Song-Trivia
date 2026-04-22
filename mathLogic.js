@@ -35,11 +35,9 @@ export const manifest = {
 
 export function resetStats() { 
     if(confirm("Are you sure you want to reset your Fast Math lifetime stats? This cannot be undone.")) {
-        // Reset the specific math branch in our unified state tree
         state.userStats.fast_math = { gamesPlayed: 0, highScore: 0, correctGuesses: 0, totalGuesses: 0 };
         localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
         
-        // Update the UI immediately so the user sees the change
         const hsElement = document.querySelector('#stats-modal .stat-val.p1');
         if (hsElement) hsElement.innerText = "0";
         alert("Fast Math stats have been reset.");
@@ -67,7 +65,6 @@ export function renderStatsUI(fmStats, container) {
 }
 
 export function shareChallenge() { 
-    // Grab the normalized score (or raw score if you haven't normalized it yet)
     const currentScore = state.rawScores[0] || 0;
     const modeName = state.gameState.level.charAt(0).toUpperCase() + state.gameState.level.slice(1);
     
@@ -82,18 +79,9 @@ export function shareChallenge() {
     }
 }
 
-// --- INTENTIONALLY DISABLED PLATFORM HOOKS ---
-// Fast Math manifest explicitly sets hasDaily: false, hiding the Daily button.
-export function startDailyChallenge() { 
-    console.warn("Daily Challenge triggered, but Fast Math does not support Daily Mode."); 
-}
-
-// Fast Math uses pure Multiple Choice, so there is no typing phase to "Stop".
+export function startDailyChallenge() { console.warn("Not supported in Math"); }
 export function handleStop() { return; }
-
-// Fast Math lifelines (wrong answer removal) trigger automatically via time thresholds.
 export function forceLifeline() { return; }
-
 
 function generateMathProblem() {
     let num1, num2, target, operatorStr;
@@ -101,23 +89,19 @@ function generateMathProblem() {
     if (state.gameState.mode === 'multiplication') {
         num1 = Math.floor(Math.random() * 11) + 2; 
         num2 = Math.floor(Math.random() * 11) + 2;
-        target = num1 * num2;
-        operatorStr = 'x';
+        target = num1 * num2; operatorStr = 'x';
     } else if (state.gameState.mode === 'subtraction') {
         num1 = Math.floor(Math.random() * 80) + 20; 
         num2 = Math.floor(Math.random() * (num1 - 5)) + 1; 
-        target = num1 - num2;
-        operatorStr = '-';
+        target = num1 - num2; operatorStr = '-';
     } else if (state.gameState.mode === 'division') {
         target = Math.floor(Math.random() * 11) + 2; 
         num2 = Math.floor(Math.random() * 11) + 2;   
-        num1 = target * num2;                        
-        operatorStr = '÷';
+        num1 = target * num2; operatorStr = '÷';
     } else { 
         num1 = Math.floor(Math.random() * 90) + 10; 
         num2 = Math.floor(Math.random() * 90) + 10;
-        target = num1 + num2;
-        operatorStr = '+';
+        target = num1 + num2; operatorStr = '+';
     }
 
     let options = [{ text: `${num1} ${operatorStr} ${num2}`, isCorrect: true }];
@@ -125,21 +109,16 @@ function generateMathProblem() {
     while(options.length < 3) {
         let w1, w2;
         if (state.gameState.mode === 'multiplication') {
-            w1 = Math.floor(Math.random() * 11) + 2;
-            w2 = Math.floor(Math.random() * 11) + 2;
+            w1 = Math.floor(Math.random() * 11) + 2; w2 = Math.floor(Math.random() * 11) + 2;
             if (w1 * w2 !== target) options.push({ text: `${w1} ${operatorStr} ${w2}`, isCorrect: false });
         } else if (state.gameState.mode === 'subtraction') {
-            w1 = Math.floor(Math.random() * 80) + 20;
-            w2 = Math.floor(Math.random() * (w1 - 5)) + 1;
+            w1 = Math.floor(Math.random() * 80) + 20; w2 = Math.floor(Math.random() * (w1 - 5)) + 1;
             if (w1 - w2 !== target) options.push({ text: `${w1} ${operatorStr} ${w2}`, isCorrect: false });
         } else if (state.gameState.mode === 'division') {
-            let wTarget = Math.floor(Math.random() * 11) + 2;
-            w2 = Math.floor(Math.random() * 11) + 2;
-            w1 = wTarget * w2;
+            let wTarget = Math.floor(Math.random() * 11) + 2; w2 = Math.floor(Math.random() * 11) + 2; w1 = wTarget * w2;
             if (wTarget !== target) options.push({ text: `${w1} ${operatorStr} ${w2}`, isCorrect: false });
         } else {
-            w1 = Math.floor(Math.random() * 90) + 10;
-            w2 = Math.floor(Math.random() * 90) + 10;
+            w1 = Math.floor(Math.random() * 90) + 10; w2 = Math.floor(Math.random() * 90) + 10;
             if (w1 + w2 !== target) options.push({ text: `${w1} ${operatorStr} ${w2}`, isCorrect: false });
         }
     }
@@ -150,7 +129,6 @@ export function startGame() {
     state.isDailyMode = false;
     state.numPlayers = state.isMultiplayer ? state.numPlayers : 1; 
 
-    // 👇 NEW TIMING CALIBRATION 👇
     if (state.gameState.level === 'easy') state.timeLimit = 20;
     else if (state.gameState.level === 'medium') state.timeLimit = 15;
     else state.timeLimit = 8; 
@@ -173,14 +151,12 @@ export function startGame() {
 
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('play-screen').classList.remove('hidden');
-    // ADD THIS LINE:
     document.querySelectorAll('.header-btn').forEach(btn => btn.classList.add('hidden'));
     document.getElementById('guess-fields').classList.add('hidden');
     document.getElementById('btn-container').classList.add('hidden');
     document.getElementById('visualizer').classList.add('hidden');
     document.getElementById('reveal-art').style.display = 'none';
 
-    // ADD THIS LINE to render the score pill immediately in Solo Mode
     if (!state.isHost) {
         document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]};">
             <div class="p-name" style="color:${colors[0]}">SCORE</div>
@@ -192,7 +168,7 @@ export function startGame() {
     nextRound();
 }
 
-function nextRound() {
+export function nextRound() {
     if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
 
     state.isProcessing = false;
@@ -212,7 +188,6 @@ function nextRound() {
              
         db.ref(`rooms/${state.roomCode}/currentRound`).set(state.curIdx + 1);
         
-        // Replaced hardcoded #fff with var(--dark-text)
         document.getElementById('feedback').innerHTML = `
             <div style="font-size:3.5rem; font-weight:900; color:var(--dark-text); margin-bottom:15px; letter-spacing: 2px;">Target: ${problem.target}</div>
             <div id="host-lock-status" style="color:var(--primary); font-size:1.3rem; font-weight:bold;">LOCKED IN: 0 / ${state.numPlayers}</div>
@@ -235,7 +210,6 @@ function nextRound() {
         tag.style.color = isDoubleRound ? "#f39c12" : "var(--primary)"; 
         tag.style.borderColor = isDoubleRound ? "#f39c12" : "var(--primary)";
               
-        // Replaced hardcoded #fff with var(--dark-text)
         document.getElementById('feedback').innerHTML = `<div style="font-size:3rem; font-weight:900; color:var(--dark-text); margin-bottom:15px;">Target: ${problem.target}</div>`;
         
         const mcContainer = document.getElementById('mc-fields');
@@ -244,7 +218,6 @@ function nextRound() {
             const btn = document.createElement('button'); 
             btn.className = 'mc-btn'; 
             btn.innerText = opt.text;
-            // Pass 'btn' so we can turn it green/red later
             btn.onclick = (e) => evaluateGuess(opt.isCorrect, e.target); 
             mcContainer.appendChild(btn);
         });
@@ -252,32 +225,27 @@ function nextRound() {
 
     state.timeLeft = state.timeLimit;
     
-    // Inject the new Timer Bar instead of the old text number
     const timerElement = document.getElementById('timer');
     timerElement.style.color = ''; 
     timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
-    
     const timerFill = document.getElementById('timer-bar-fill');
 
+    // 👇 FIXED: The proper non-nested setInterval that works for both! 👇
     state.timerId = setInterval(() => {
-        if (!state.isMultiplayer) {
-        state.timerId = setInterval(() => {
-            state.timeLeft--;
-            
-            let percentage = (state.timeLeft / state.timeLimit) * 100;
-            if(timerFill) timerFill.style.width = `${percentage}%`;
+        state.timeLeft--;
+        
+        let percentage = (state.timeLeft / state.timeLimit) * 100;
+        if(timerFill) timerFill.style.width = `${percentage}%`;
 
         if (state.isMultiplayer && state.isHost) {
             db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
         }
 
-        // Lifeline Calibration
         const helpThreshold = state.gameState.level === 'easy' ? 10 : 5;
         
         if (state.gameState.level !== 'hard' && state.timeLeft === helpThreshold) {
             if (state.isMultiplayer && state.isHost) {
                 let removed = false;
-                
                 let newOptions = problem.options.filter(opt => {
                     if (!opt.isCorrect && !removed) { removed = true; return false; }
                     return true;
@@ -297,39 +265,67 @@ function nextRound() {
             }
         }
         
-        // Turn bar red in final 3 seconds
         if (state.timeLeft <= 3) {
             if(timerFill) timerFill.style.backgroundColor = 'var(--fail)';
             sfxTick.play().catch(()=>{});
         }
 
         if (state.timeLeft <= 0) {
-                clearInterval(state.timerId);
+            clearInterval(state.timerId);
+            // Only force the end locally if we are NOT in multiplayer. 
+            // If multiplayer, the Console handles it!
+            if (!state.isMultiplayer) {
                 evaluateGuess(false, null); 
             }
-        }, 1000);
+        }
+    }, 1000);
+}
+
+export function evaluateGuess(isCorrect, clickedBtn = null) {
+    if (state.isProcessing) return;
+    state.isProcessing = true;
+    clearInterval(state.timerId);
+
+    document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
+    let roundPts = 0;
+    const isDoubleRound = state.doubleRounds.includes(state.curIdx);
+
+    if (isCorrect) {
+        if(clickedBtn) clickedBtn.classList.add('correct');
+        state.streaks[0]++;
+        roundPts = state.timeLeft * 10; 
+        if (state.streaks[0] > 0 && state.streaks[0] % 3 === 0) roundPts += 50;
+        if (isDoubleRound) roundPts *= 2;
+        
+        const bonusTxt = isDoubleRound ? "⭐ 2X BONUS! " : "CORRECT! ";
+        document.getElementById('feedback').innerHTML = `<div style="color:${isDoubleRound ? '#ffcc00' : 'var(--success)'}; font-size:1.5rem; font-weight:bold;">✅ ${bonusTxt}+${roundPts}</div>`;
+        state.rawScores[0] += roundPts;
+        sfxCheer.currentTime = 0; sfxCheer.play().catch(()=>{});
+    } else {
+        if(clickedBtn) clickedBtn.classList.add('wrong');
+        state.streaks[0] = 0;
+        sfxBuzzer.currentTime = 0; sfxBuzzer.play().catch(()=>{});
+        document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div>`;
     }
 
-// mathLogic.js
-
-// mathLogic.js
+    document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts" style="color:var(--dark-text);">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
+    
+    state.curIdx++; 
+    setTimeout(nextRound, 2000); 
+}
 
 export async function evaluateMultiplayerRound(players) {
     if (state.isProcessing) return;
     state.isProcessing = true;
-    clearInterval(state.timerId); // Just in case
+    clearInterval(state.timerId); 
 
     const results = [];
-    const currentProblem = document.getElementById('feedback').innerText; 
-    // We need to know what the correct answer was for this round
-    // (You'll want to ensure 'problem.target' was saved to state.currentCorrectAnswer in nextRound)
     const correctAnswer = state.currentCorrectAnswer; 
 
     Object.keys(players).forEach(pid => {
         const p = players[pid];
         let points = 0;
         
-        // Check if their guess matches the target
         if (p.guess && p.guess.isMC && p.guess.correct) {
             const speedFactor = p.guess.time / state.timeLimit;
             points = Math.round(100 + (speedFactor * 100));
@@ -342,62 +338,9 @@ export async function evaluateMultiplayerRound(players) {
         });
     });
 
-    // Delegate the heavy lifting of updating the DB back to the Console!
     window.finalizeMultiplayerRound(results);
-    
-    // Local Host UI Feedback
     document.getElementById('feedback').innerHTML = `<h2 style="color:var(--brand)">ROUND OVER</h2><p>Check your phones!</p>`;
 }
-
-// Change the function signature to accept the button
-export function evaluateGuess(isCorrect, clickedBtn = null) {
-    if (state.isProcessing) return;
-    state.isProcessing = true;
-    clearInterval(state.timerId);
-
-    document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
-    let roundPts = 0;
-    const isDoubleRound = state.doubleRounds.includes(state.curIdx);
-
-    if (isCorrect) {
-        // NEW: Turn the clicked button solid green
-        if(clickedBtn) clickedBtn.classList.add('correct');
-        
-        state.streaks[0]++;
-        roundPts = state.timeLeft * 10; 
-        if (state.streaks[0] > 0 && state.streaks[0] % 3 === 0) roundPts += 50;
-        
-        if (isDoubleRound) roundPts *= 2;
-        
-        const bonusTxt = isDoubleRound ? "⭐ 2X BONUS! " : "CORRECT! ";
-        document.getElementById('feedback').innerHTML = `<div style="color:${isDoubleRound ? '#ffcc00' : 'var(--success)'}; font-size:1.5rem; font-weight:bold;">✅ ${bonusTxt}+${roundPts}</div>`;
-        
-        state.rawScores[0] += roundPts;
-        sfxCheer.currentTime = 0; sfxCheer.play().catch(()=>{});
-    } else {
-        // NEW: Turn the clicked button solid red
-        if(clickedBtn) clickedBtn.classList.add('wrong');
-        
-        // Also find and highlight the actual correct answer in green
-        document.querySelectorAll('.mc-btn').forEach(b => {
-             // We need to check if the button's text matches the correct option.
-             // Since we don't have the problem object here, we can rely on evaluateGuess. 
-             // (Alternatively, the player just sees what they got wrong).
-        });
-        
-        state.streaks[0] = 0;
-        sfxBuzzer.currentTime = 0; sfxBuzzer.play().catch(()=>{});
-        document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.5rem; font-weight:bold; margin-bottom:5px;">❌ INCORRECT</div>`;
-    }
-
-    // UPDATE: Remove #fff from the pts display
-    document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]}"><div class="p-name">SCORE</div><div class="p-pts" style="color:var(--dark-text);">${state.rawScores[0]}</div><div class="p-streak">🔥 ${state.streaks[0]}</div></div>`;
-    
-    state.curIdx++; 
-    setTimeout(nextRound, 2000); 
-}
-
-
 
 function getNormalizedScore(rawScore) {
     const maxPossible = state.maxRounds * 250; 
@@ -410,11 +353,8 @@ function endGameSequence() {
     
     const playlistBox = document.querySelector('.playlist-box');
     if (playlistBox) playlistBox.style.display = 'none'; 
-    
-    // 👇 ADD SUBTITLE 👇
     document.getElementById('final-subtitle').innerText = "Scores Normalized to 1000";
     
-    // 👇 CALCULATE NORMALIZED SCORES 👇
     const normalizedScores = state.rawScores.map(s => getNormalizedScore(s));
     const maxScore = Math.max(...normalizedScores);
     
@@ -425,20 +365,17 @@ function endGameSequence() {
             let finalResults = [];
             
             pIds.forEach((pid, index) => {
-                // Use normalizedScores[index] instead of rawScores[index]
                 finalResults.push({ name: players[pid].name, score: normalizedScores[index], id: pid });
                 db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: normalizedScores[index] });
             });
             
             finalResults.sort((a, b) => b.score - a.score); 
-            // 👇 ADD THIS LINE to send the leaderboard to the client phones
             db.ref(`rooms/${state.roomCode}/finalLeaderboard`).set(finalResults);
             
             let podiumHTML = `<div style="margin-top: 15px; text-align: left; background: var(--surface); padding: 15px; border-radius: 12px; border: 2px solid var(--border-light);"><h3 style="margin-top:0; color:var(--primary); text-align:center; text-transform:uppercase; margin-bottom:15px;">Final Standings</h3>`;
             finalResults.forEach((p, idx) => {
                 let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '👏'));
                 let color = idx === 0 ? 'var(--p1)' : (idx === 1 ? 'var(--p2)' : 'var(--text-muted)');
-                // Removed the hardcoded white text, relying on inherited dark text
                 podiumHTML += `<div style="display:flex; justify-content:space-between; padding: 12px 5px; border-bottom: 1px solid var(--border-light); font-size: 1.3rem; font-weight: bold; color: ${color};"><span>${medal} ${p.name}</span><span style="font-family:'Courier New', monospace; color: var(--dark-text);">${p.score}</span></div>`;
             });
             podiumHTML += `</div>`;
@@ -448,9 +385,7 @@ function endGameSequence() {
             db.ref(`rooms/${state.roomCode}/state`).set('finished');
         });
     } else {
-        // Vibrant Gradient Score Card for Solo Fast Math
         const hypeText = maxScore > 800 ? "Math Genius! 🧠" : (maxScore > 500 ? "Solid Speed! ⚡" : "Keep Practicing! 📈");
-        
         document.getElementById('winner-text').innerHTML = `
             <div style="background: linear-gradient(135deg, var(--primary), #8e2de2); padding: 50px 20px; border-radius: 24px; color: white; box-shadow: 0 12px 24px rgba(110, 69, 226, 0.2); margin: 30px 0; text-align: center;">
                 <div style="font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 10px;">Final Score</div>
@@ -458,19 +393,13 @@ function endGameSequence() {
                 <div style="font-size: 1.2rem; font-weight: 600; margin-top: 15px; opacity: 0.9;">${hypeText}</div>
             </div>
         `;
-        document.getElementById('winner-text').style.color = ''; // Reset default color
+        document.getElementById('winner-text').style.color = ''; 
         document.getElementById('final-grid').innerHTML = "";
     }
    
     state.userStats.fast_math = state.userStats.fast_math || { gamesPlayed: 0, highScore: 0 };
-    
-    // 👇 SAVE THE NORMALIZED HIGH SCORE 👇
-    if (maxScore > (state.userStats.fast_math.highScore || 0)) {
-        state.userStats.fast_math.highScore = maxScore;
-    }
-
+    if (maxScore > (state.userStats.fast_math.highScore || 0)) state.userStats.fast_math.highScore = maxScore;
     state.userStats.fast_math.gamesPlayed++;
     state.userStats.platformGamesPlayed++;
-    
     localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 }
