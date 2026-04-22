@@ -36,9 +36,7 @@ export function handleJoinScreen() {
     hideModal('multiplayer-modal');
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('join-screen').classList.remove('hidden');
-    
     document.body.classList.add('client-mode');
-
     state.isMultiplayer = true;
     state.isHost = false;
 }
@@ -64,7 +62,6 @@ export async function createRoom() {
         createdAt: window.firebase.database.ServerValue.TIMESTAMP
     });
 
-    // 2. The Dead-Man's Switch: If the host disconnects, wipe the room
     db.ref(`rooms/${state.roomCode}`).onDisconnect().remove();
 
     document.getElementById('setup-screen').classList.add('hidden');
@@ -124,7 +121,6 @@ export async function joinRoom() {
     
     state.gameState = roomData.settings || state.gameState;
 
-    // Calculate max time for the client timer bar
     if (cartId === 'fast_math') {
         state.timeLimit = state.gameState.level === 'easy' ? 20 : (state.gameState.level === 'medium' ? 15 : 8);
     } else if (cartId === 'consensus') {
@@ -204,7 +200,6 @@ export async function joinRoom() {
         }
     });
 
-    // 🚀 NEW TIMER BAR LOGIC FOR CLIENT 🚀
     db.ref(`rooms/${state.roomCode}/timeLeft`).on('value', snap => {
         const timerContainer = document.getElementById('client-timer-display');
         if(snap.exists() && timerContainer) {
@@ -214,17 +209,12 @@ export async function joinRoom() {
             let percentage = (time / (state.timeLimit || 30)) * 100;
             let bgColor = time <= 3 ? 'var(--fail)' : 'var(--primary)';
             
-            // Check if the bar already exists
             let fill = document.getElementById('client-timer-fill');
-            
             if (!fill) {
-                // If it doesn't exist, inject it for the first time
                 timerContainer.innerHTML = `<div class="timer-bar-container" style="margin: 15px 0;"><div id="client-timer-fill" class="timer-bar-fill" style="width: 100%;"></div></div>`;
                 fill = document.getElementById('client-timer-fill');
             }
             
-            // Apply the new width and color to the EXISTING element
-            // This allows the CSS "transition: width 1s linear" to glide smoothly!
             if (fill) {
                 fill.style.width = `${percentage}%`;
                 fill.style.backgroundColor = bgColor;
@@ -232,10 +222,8 @@ export async function joinRoom() {
         }
     });
 
-    // 🚀 NEW DYNAMIC PROMPT INJECTION FOR CLIENT 🚀
     db.ref(`rooms/${state.roomCode}/currentPrompt`).on('value', snap => {
         let promptDiv = document.getElementById('client-prompt');
-        
         if (snap.exists()) {
             if (!promptDiv) {
                 promptDiv = document.createElement('div');
@@ -244,13 +232,11 @@ export async function joinRoom() {
                 const mcInputs = document.getElementById('client-mc-inputs');
                 if (playScreen && mcInputs) playScreen.insertBefore(promptDiv, mcInputs);
             }
-            
             if (promptDiv.parentElement && promptDiv.parentElement.id === 'client-text-inputs') {
                 const playScreen = document.getElementById('client-play-screen');
                 const mcInputs = document.getElementById('client-mc-inputs');
                 if (playScreen && mcInputs) playScreen.insertBefore(promptDiv, mcInputs);
             }
-
             promptDiv.innerHTML = `<div class="prompt-text" style="text-align:center; margin-top:15px; margin-bottom:20px;">${snap.val()}</div>`;
             promptDiv.classList.remove('hidden');
         } else if (promptDiv) {
@@ -268,22 +254,18 @@ export async function joinRoom() {
     });
 }
 
-// multiplayer.js
-
 export async function startMultiplayerGame() {
     document.getElementById('host-lobby-screen').classList.add('hidden');
     
-    // 1. Initialize the Room State
     await db.ref(`rooms/${state.roomCode}`).update({ 
         state: 'playing', 
         currentRound: 1, 
         mode: state.gameState.mode,
-        timeLeft: state.timeLimit // Set initial time
+        timeLeft: state.timeLimit 
     });
     
     await db.ref(`rooms/${state.roomCode}/hostState`).set({ phase: 'loading' });
 
-    // 2. The Master Network Clock (Only the Host runs this)
     let masterClock = setInterval(async () => {
         const snap = await db.ref(`rooms/${state.roomCode}/timeLeft`).once('value');
         let time = snap.val();
@@ -293,13 +275,11 @@ export async function startMultiplayerGame() {
             await db.ref(`rooms/${state.roomCode}/timeLeft`).set(time);
         } else {
             clearInterval(masterClock);
-            // Timer hit zero! Force evaluation of whoever answered
             const playersSnap = await db.ref(`rooms/${state.roomCode}/players`).once('value');
             window.evaluateMultiplayerRound(playersSnap.val());
         }
     }, 1000);
 
-    // 3. The Lock-In Listener (Fires if everyone is ready BEFORE time runs out)
     db.ref(`rooms/${state.roomCode}/players`).on('value', (snap) => {
         if (!state.isHost || !snap.exists() || state.isProcessing) return;
         
@@ -312,7 +292,7 @@ export async function startMultiplayerGame() {
         });
 
         if (allLocked && totalPlayers > 0) {
-            clearInterval(masterClock); // Stop the clock!
+            clearInterval(masterClock); 
             window.evaluateMultiplayerRound(players); 
         }
     });
@@ -337,7 +317,6 @@ export function submitClientTextGuess() {
     const song = document.getElementById('client-guess-song').value.trim();
     const movie = document.getElementById('client-guess-movie').value.trim();
     
-    // Read from dataset instead of text
     const timerContainer = document.getElementById('client-timer-display');
     const currentTime = timerContainer ? (parseInt(timerContainer.dataset.time) || 0) : 0;
     
@@ -376,7 +355,6 @@ function renderClientMC(options) {
 }
 
 function submitClientMCGuess(isCorrect) {
-    // Read from dataset instead of text
     const timerContainer = document.getElementById('client-timer-display');
     const currentTime = timerContainer ? (parseInt(timerContainer.dataset.time) || 0) : 0;
     
@@ -388,23 +366,18 @@ function submitClientMCGuess(isCorrect) {
     document.getElementById('client-locked-screen').classList.remove('hidden');
 }
 
-// multiplayer.js
-
 export async function finalizeMultiplayerRound(results) {
-    // 1. Update each player's score in Firebase
     const updates = {};
     results.forEach(res => {
         updates[`players/${res.id}/score`] = res.newScore;
-        updates[`players/${res.id}/status`] = 'waiting'; // Reset for next round
+        updates[`players/${res.id}/status`] = 'waiting'; 
     });
 
     await db.ref(`rooms/${state.roomCode}`).update(updates);
 
-    // 2. Clear the round data to signal the next round is ready
     await db.ref(`rooms/${state.roomCode}/currentMC`).remove();
     await db.ref(`rooms/${state.roomCode}/currentPrompt`).remove();
 
-    // 3. The Host waits a few seconds (to show results) then moves on
     setTimeout(() => {
         state.isProcessing = false;
         if (window.activeCartridge && window.activeCartridge.nextRound) {
@@ -413,5 +386,4 @@ export async function finalizeMultiplayerRound(results) {
     }, 4000);
 }
 
-// Make it globally accessible for the cartridges
 window.finalizeMultiplayerRound = finalizeMultiplayerRound;
