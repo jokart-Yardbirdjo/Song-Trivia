@@ -70,7 +70,20 @@ body {
 .header-btn:hover { border-color: var(--primary); color: var(--primary); transform: scale(1.1); background: white; }
 #info-btn { right: 40px; }
 #stats-btn { right: 0; font-size: 0.9rem; } 
-#main-title { margin: 0; color: var(--dark-text); font-size: 1.4rem; line-height: 1.2; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; padding: 0 80px 0 45px; text-align: center; }
+#main-title { 
+    margin: 0; 
+    font-size: 2.2rem; /* Much bigger! */
+    line-height: 1.2; 
+    text-transform: uppercase; 
+    font-weight: 900; /* Maximum thickness */
+    letter-spacing: 4px; /* Cinematic spacing */
+    padding: 0 80px 0 45px; /* Keeps your buttons aligned */
+    text-align: center; 
+    /* The Magic Gradient */
+    background: linear-gradient(135deg, var(--primary), #8e2de2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
 
 /* ✨ DYNAMIC HOME HEADER ✨ */
 #game-header.home-screen #info-btn { right: 0 !important; }
