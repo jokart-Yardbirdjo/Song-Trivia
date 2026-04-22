@@ -55,6 +55,11 @@ window.selectGame = (gameId) => {
         window.loadCartridge(gameId); 
         buildSetupScreen(window.activeCartridge.manifest);
 
+        // 👇 ADD THIS BLOCK RIGHT HERE 👇
+        if (window.activeCartridge && window.activeCartridge.checkDailyReset) {
+            window.activeCartridge.checkDailyReset();
+        }
+
         document.getElementById('main-menu-screen').classList.add('hidden');
         document.getElementById('setup-screen').classList.remove('hidden');
     } catch(e) {
@@ -83,15 +88,14 @@ window.resetStats = () => window.activeCartridge.resetStats();
 window.shareChallenge = () => window.activeCartridge.shareChallenge();
 window.evaluateMultiplayerRound = (players) => window.activeCartridge.evaluateMultiplayerRound(players);
 
+// In app.js window.onload
 window.onload = () => {
     document.getElementById('main-title').innerText = "YARDBIRD'S GAMES";
     updatePlatformUI('main_menu'); 
     
-    // Safely check the nested song_trivia stats
-    const todayStr = new Date().toDateString();
-    if (state.userStats.song_trivia && state.userStats.song_trivia.lastPlayedDate !== todayStr && state.userStats.song_trivia.lastPlayedDate !== null) {
-        state.userStats.song_trivia.playedDailyToday = false;
-        localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
+    // 👇 THE FIX: Ask the cartridge to check its own daily reset logic
+    if (window.activeCartridge && window.activeCartridge.checkDailyReset) {
+        window.activeCartridge.checkDailyReset();
     }
     
     setupDailyButton();
