@@ -387,3 +387,31 @@ function submitClientMCGuess(isCorrect) {
     document.getElementById('client-mc-inputs').classList.add('hidden');
     document.getElementById('client-locked-screen').classList.remove('hidden');
 }
+
+// multiplayer.js
+
+export async function finalizeMultiplayerRound(results) {
+    // 1. Update each player's score in Firebase
+    const updates = {};
+    results.forEach(res => {
+        updates[`players/${res.id}/score`] = res.newScore;
+        updates[`players/${res.id}/status`] = 'waiting'; // Reset for next round
+    });
+
+    await db.ref(`rooms/${state.roomCode}`).update(updates);
+
+    // 2. Clear the round data to signal the next round is ready
+    await db.ref(`rooms/${state.roomCode}/currentMC`).remove();
+    await db.ref(`rooms/${state.roomCode}/currentPrompt`).remove();
+
+    // 3. The Host waits a few seconds (to show results) then moves on
+    setTimeout(() => {
+        state.isProcessing = false;
+        if (window.activeCartridge && window.activeCartridge.nextRound) {
+            window.activeCartridge.nextRound(); 
+        }
+    }, 4000);
+}
+
+// Make it globally accessible for the cartridges
+window.finalizeMultiplayerRound = finalizeMultiplayerRound;
