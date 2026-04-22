@@ -84,27 +84,6 @@ export async function startGame() {
     state.rawScores = new Array(state.numPlayers).fill(0);
     state.streaks = new Array(state.numPlayers).fill(0);
 
-    // 👇 URL PARSER & PRNG INITIALIZATION 👇
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetScore = urlParams.get('beat');
-    const urlSeed = urlParams.get('seed');
-    const urlMode = urlParams.get('mode');
-
-    // Force the correct category if challenged
-    if (urlMode) state.gameState.mode = urlMode; 
-
-    // Use Challenger's seed, or make a new one
-    state.gameSeed = urlSeed ? parseInt(urlSeed) : Math.floor(Math.random() * 1000000);
-    state.prng = createPRNG(state.gameSeed);
-
-    if (targetScore) {
-        document.getElementById('feedback').insertAdjacentHTML('afterend', 
-            `<div id="challenge-banner" style="background:var(--primary); color:white; padding:8px; border-radius:8px; margin-top:10px; text-align:center; font-weight:bold; font-size: 1.2rem;">
-                🎯 Target to Beat: ${targetScore} Pts
-            </div>`
-        );
-    }
-
     // Platform UI Prep
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('play-screen').classList.remove('hidden');
@@ -115,6 +94,72 @@ export async function startGame() {
 
     if (!state.isHost) {
         document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]};"><div class="p-name" style="color:${colors[0]}">SCORE</div><div class="p-pts" style="color:var(--dark-text)">0</div><div class="p-streak" style="opacity:0">🔥 0</div></div>`;
+    }
+
+    // Check if the user pasted an OpenAI key to trigger Infinite Mode
+    const customInput = document.getElementById('custom-input');
+    const apiKey = customInput ? customInput.value.trim() : "";
+
+    // ==========================================
+    // PATH A: INFINITE AI MODE
+    // ==========================================
+    if (apiKey && apiKey.startsWith('sk-')) {
+        document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.5rem; margin-top:40px;">Generating AI Quotes...</div>`;
+        
+        // Dynamically build the prompt based on what mode they clicked
+        let promptFocus = "";
+        if (state.gameState.mode === 'movie') promptFocus = "famous movie and TV show lines";
+        else if (state.gameState.mode === 'celeb') promptFocus = "viral pop-culture moments, reality TV quotes, and famous celebrity tweets";
+        else promptFocus = "well-known song lyrics and classic literature lines";
+
+        try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [{ 
+                        role: "system", 
+                        content: `Generate exactly ${state.maxRounds} quotes focusing strictly on ${promptFocus}. Format as a JSON object with a "quotes" array. Each object must have "q" (the quote string), "a" (the real author/character string), and "wrong" (an array of 3 believable wrong author/character strings).`
+                    }],
+                    response_format: { type: "json_object" },
+                    temperature: 0.8 
+                })
+            });
+            
+            const data = await response.json();
+            state.songs = JSON.parse(data.choices[0].message.content).quotes;
+            state.globalPool = []; // No global pool needed for AI
+            
+            nextRound();
+            return; // Exit early so we don't load the local database
+            
+        } catch(e) {
+            console.error(e);
+            alert("AI Generation failed. Check API Key.");
+            location.reload(); return;
+        }
+    }
+    
+    // ==========================================
+    // PATH B: STANDARD PARTY PACK (LOCAL DB)
+    // ==========================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetScore = urlParams.get('beat');
+    const urlSeed = urlParams.get('seed');
+    const urlMode = urlParams.get('mode');
+
+    if (urlMode) state.gameState.mode = urlMode; 
+
+    state.gameSeed = urlSeed ? parseInt(urlSeed) : Math.floor(Math.random() * 1000000);
+    state.prng = createPRNG(state.gameSeed);
+
+    if (targetScore) {
+        document.getElementById('feedback').insertAdjacentHTML('afterend', 
+            `<div id="challenge-banner" style="background:var(--primary); color:white; padding:8px; border-radius:8px; margin-top:10px; text-align:center; font-weight:bold; font-size: 1.2rem;">
+                🎯 Target to Beat: ${targetScore} Pts
+            </div>`
+        );
     }
 
     document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.5rem; margin-top:40px;">Loading Database...</div>`;
@@ -130,10 +175,8 @@ export async function startGame() {
             location.reload(); return;
         }
 
-        // Shuffle and slice for the game using PRNG
         state.songs = deterministicShuffle([...pool], state.prng).slice(0, state.maxRounds);
         
-        // Build a global pool of authors for wrong answers
         state.globalPool = [];
         Object.keys(dbData).forEach(k => {
             dbData[k].forEach(item => { if(!state.globalPool.includes(item.a)) state.globalPool.push(item.a); });
@@ -156,14 +199,21 @@ function nextRound() {
     // Generate 3 random wrong answers using deterministic shuffle
     let options = [{ str: currentData.a, isCorrect: true }];
     
-    let filteredGlobal = state.globalPool.filter(a => a !== currentData.a);
-    let wrongPool = deterministicShuffle(filteredGlobal, state.prng);
-    
-    for(let i=0; i<3; i++) {
-        if(wrongPool[i]) options.push({ str: wrongPool[i], isCorrect: false });
+    if (state.globalPool.length === 0 && currentData.wrong) {
+        // PATH A: AI INFINITE MODE
+        currentData.wrong.forEach(w => options.push({ str: w, isCorrect: false }));
+        // Use standard math random here, seeds don't matter for AI games
+        options = options.sort(() => 0.5 - Math.random()); 
+    } else {
+        // PATH B: STANDARD LOCAL DB MODE
+        let filteredGlobal = state.globalPool.filter(a => a !== currentData.a);
+        let wrongPool = deterministicShuffle(filteredGlobal, state.prng);
+        
+        for(let i=0; i<3; i++) {
+            if(wrongPool[i]) options.push({ str: wrongPool[i], isCorrect: false });
+        }
+        options = deterministicShuffle(options, state.prng);
     }
-    
-    options = deterministicShuffle(options, state.prng);
 
     if (state.isMultiplayer && state.isHost) {
         document.getElementById('score-board').innerHTML = ''; 
