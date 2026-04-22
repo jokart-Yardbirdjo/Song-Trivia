@@ -1123,3 +1123,52 @@ async function extractPlaylistData(urlInput) {
     
     return validPool; 
 }
+
+import { subOptions } from './state.js'; // Ensure this is imported at the top of gameLogic.js!
+
+export function onModeSelect(mode) {
+    const customInput = document.getElementById('custom-input');
+    const subArea = document.getElementById('sub-selection-area');
+    
+    if (subOptions[mode]) {
+        state.gameState.sub = subOptions[mode][0]; 
+        document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
+        customInput.classList.add('hidden');
+        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
+        customInput.type = "text";
+        subArea.classList.remove('hidden');
+
+        // Render the pills locally!
+        const container = document.getElementById('sub-pills');
+        container.innerHTML = '';
+        subOptions[mode].forEach(opt => {
+            const pill = document.createElement('div');
+            pill.className = `pill pill-wide ${state.gameState.sub === opt ? 'active' : ''}`;
+            pill.innerText = opt === 'shwe-special' ? 'Shwe Special (90s)' : (opt.charAt(0).toUpperCase() + opt.slice(1).replace(/-/g, ' '));
+            pill.onclick = () => window.setSub(opt, pill);
+            container.appendChild(pill);
+        });
+    }
+
+    const levelGroup = document.getElementById('level-group');
+    if (mode === 'movie') {
+        window.setLevel('medium', document.getElementById('lvl-medium'));
+        levelGroup.style.opacity = '0.5';
+        levelGroup.style.pointerEvents = 'none';
+    } else {
+        levelGroup.style.opacity = '1';
+        levelGroup.style.pointerEvents = 'auto';
+    }
+}
+
+export function onSubSelect(val) {
+    const customInput = document.getElementById('custom-input');
+    if (val === 'custom') {
+        customInput.classList.remove('hidden');
+        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
+        customInput.type = "text";
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+    }
+}
