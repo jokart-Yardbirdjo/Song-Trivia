@@ -197,6 +197,7 @@ function nextRound() {
 
     state.isProcessing = false;
     const problem = generateMathProblem();
+    state.currentCorrectAnswer = problem.target;
     const tag = document.getElementById('active-player');
 
     const isDoubleRound = state.doubleRounds && state.doubleRounds.includes(state.curIdx);
@@ -253,17 +254,18 @@ function nextRound() {
     
     // Inject the new Timer Bar instead of the old text number
     const timerElement = document.getElementById('timer');
-    timerElement.style.color = ''; // Clear any residual text colors
+    timerElement.style.color = ''; 
     timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
     
     const timerFill = document.getElementById('timer-bar-fill');
 
     state.timerId = setInterval(() => {
-        state.timeLeft--;
-        
-        // Calculate percentage for the width
-        let percentage = (state.timeLeft / state.timeLimit) * 100;
-        if(timerFill) timerFill.style.width = `${percentage}%`;
+        if (!state.isMultiplayer) {
+        state.timerId = setInterval(() => {
+            state.timeLeft--;
+            
+            let percentage = (state.timeLeft / state.timeLimit) * 100;
+            if(timerFill) timerFill.style.width = `${percentage}%`;
 
         if (state.isMultiplayer && state.isHost) {
             db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
@@ -302,15 +304,49 @@ function nextRound() {
         }
 
         if (state.timeLeft <= 0) {
-            clearInterval(state.timerId);
-            if (state.isMultiplayer && state.isHost) {
-                db.ref(`rooms/${state.roomCode}/players`).once('value', snap => evaluateMultiplayerRound(snap.val()));
-            } else {
-                // Pass null because no button was physically clicked
+                clearInterval(state.timerId);
                 evaluateGuess(false, null); 
             }
+        }, 1000);
+    }
+
+// mathLogic.js
+
+// mathLogic.js
+
+export async function evaluateMultiplayerRound(players) {
+    if (state.isProcessing) return;
+    state.isProcessing = true;
+    clearInterval(state.timerId); // Just in case
+
+    const results = [];
+    const currentProblem = document.getElementById('feedback').innerText; 
+    // We need to know what the correct answer was for this round
+    // (You'll want to ensure 'problem.target' was saved to state.currentCorrectAnswer in nextRound)
+    const correctAnswer = state.currentCorrectAnswer; 
+
+    Object.keys(players).forEach(pid => {
+        const p = players[pid];
+        let points = 0;
+        
+        // Check if their guess matches the target
+        if (p.guess && p.guess.isMC && p.guess.correct) {
+            const speedFactor = p.guess.time / state.timeLimit;
+            points = Math.round(100 + (speedFactor * 100));
+            if (state.doubleRounds.includes(state.curIdx)) points *= 2;
         }
-    }, 1000);
+
+        results.push({
+            id: pid,
+            newScore: (p.score || 0) + points
+        });
+    });
+
+    // Delegate the heavy lifting of updating the DB back to the Console!
+    window.finalizeMultiplayerRound(results);
+    
+    // Local Host UI Feedback
+    document.getElementById('feedback').innerHTML = `<h2 style="color:var(--brand)">ROUND OVER</h2><p>Check your phones!</p>`;
 }
 
 // Change the function signature to accept the button
@@ -361,43 +397,7 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
     setTimeout(nextRound, 2000); 
 }
 
-export function evaluateMultiplayerRound(players) {
-    if (state.isProcessing) return;
-    state.isProcessing = true;
-    clearInterval(state.timerId);
 
-    let fbHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:15px; font-weight:bold;">`;
-    const playerIds = Object.keys(players);
-    const isDoubleRound = state.doubleRounds.includes(state.curIdx);
-    
-    playerIds.forEach((pid, index) => {
-        const p = players[pid];
-        let roundPts = 0;
-        let correct = (p.guess && p.guess.isMC && p.guess.correct);
-
-        if (correct) {
-            state.streaks[index]++;
-            roundPts = p.guess.time * 10;
-            if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundPts += 50; 
-            
-            if (isDoubleRound) roundPts *= 2;
-            
-            // Fixed Bug: Brought back the player's name so the host screen makes sense!
-            const bonusTxt = isDoubleRound ? "⭐ 2X BONUS! " : "✅ ";
-            fbHTML += `<div style="color:${isDoubleRound ? '#ffcc00' : 'var(--success)'}; font-size:1.1rem; font-weight:bold;">${bonusTxt}${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
-            
-            state.rawScores[index] += roundPts;
-        } else {
-            fbHTML += `<div style="color:var(--fail); font-size:1.1rem; font-weight:bold;">❌ ${p.nickname || p.name || "Player"}: 0</div>`;
-            state.streaks[index] = 0;
-        }
-    });
-
-    fbHTML += `</div>`;
-    document.getElementById('feedback').innerHTML = fbHTML; 
-    state.curIdx++; 
-    setTimeout(nextRound, 4000); 
-}
 
 function getNormalizedScore(rawScore) {
     const maxPossible = state.maxRounds * 250; 
