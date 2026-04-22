@@ -84,6 +84,7 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
+#final-subtitle { display: none !important; }
 
 /* ✨ DYNAMIC HOME HEADER ✨ */
 #game-header.home-screen #info-btn { right: 0 !important; }
