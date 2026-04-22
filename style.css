@@ -165,12 +165,6 @@ select {
     line-height: 1.2;
 }
 
-@media (max-width: 768px) {
-    .prompt-text {
-        font-size: 1.4rem; /* Scales down significantly for phones */
-        margin-bottom: 15px;
-    }
-}
 
 /* =========================================
    CONSENSUS TOUCH BUTTON STATES
@@ -336,6 +330,23 @@ body.client-mode #main-title { padding: 0 !important; font-size: 1.9rem !importa
 
 @media (max-width: 768px) {
     #game-header { padding: 0; justify-content: center; align-items: center; }
-    #main-title { font-size: 1.1rem; padding: 0 75px 0 45px; text-align: center; }
     #info-btn { right: 40px; }
+    
+    /* Mobile-Optimized Gradient Title */
+    #main-title { 
+        font-size: 1.6rem; 
+        font-weight: 900;
+        letter-spacing: 2px;
+        padding: 0 75px 0 45px; 
+        text-align: center; 
+        background: linear-gradient(135deg, var(--primary), #8e2de2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* 👇 Your awesome prompt-text fix! 👇 */
+    .prompt-text {
+        font-size: 1.4rem; 
+        margin-bottom: 15px;
+    }
 }
