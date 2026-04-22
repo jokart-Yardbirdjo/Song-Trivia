@@ -753,3 +753,16 @@ function endGameSequence() {
     state.userStats.platformGamesPlayed++;
     localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 }
+
+export function onModeSelect(mode) {
+    const customInput = document.getElementById('custom-input');
+    if (mode === 'ai_infinite') {
+        customInput.classList.remove('hidden');
+        customInput.placeholder = "Paste your OpenAI API Key...";
+        customInput.type = "password"; 
+        const savedKey = localStorage.getItem('consensus_openai_key');
+        if (savedKey) customInput.value = savedKey;
+    } else if (mode === 'party_pack') {
+        customInput.classList.add('hidden');
+    }
+}
