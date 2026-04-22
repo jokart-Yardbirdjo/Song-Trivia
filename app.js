@@ -1,12 +1,12 @@
 // app.js
-import { state } from './state.js';
-import { showModal, hideModal, setMode, setSub, setPill, setLevel, renderPlaylist, setupDailyButton, buildSetupScreen, updatePlatformUI } from './ui.js';
-import { handleHostSetup, handleJoinScreen, createRoom, joinRoom, startMultiplayerGame, cancelLobby, cancelActiveGame, submitClientTextGuess, requestClientLifeline } from './multiplayer.js';
+import { state } from './state.js?v=2';
+import { showModal, hideModal, setMode, setSub, setPill, setLevel, renderPlaylist, setupDailyButton, buildSetupScreen, updatePlatformUI } from './ui.js?v=2';
+import { handleHostSetup, handleJoinScreen, createRoom, joinRoom, startMultiplayerGame, cancelLobby, cancelActiveGame, submitClientTextGuess, requestClientLifeline } from './multiplayer.js?v=2';
 
-import * as SongTrivia from './gameLogic.js';
-import * as FastMath from './mathLogic.js';
-import * as Consensus from './consensusLogic.js';
-import * as QuoteTrivia from './quoteLogic.js';
+import * as SongTrivia from './gameLogic.js?v=2';
+import * as FastMath from './mathLogic.js?v=2';
+import * as Consensus from './consensusLogic.js?v=2';
+import * as QuoteTrivia from './quoteLogic.js?v=2';
 
 // Attach to window so buttons can always find the active cartridge
 window.activeCartridge = SongTrivia; 
