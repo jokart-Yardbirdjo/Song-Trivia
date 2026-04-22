@@ -1,6 +1,6 @@
 // app.js
 import { state } from './state.js';
-import { showModal, hideModal, setMode, setSub, setPill, setLevel, renderPlaylist, renderSubPills, setupDailyButton, buildSetupScreen, updatePlatformUI } from './ui.js';
+import { showModal, hideModal, setMode, setSub, setPill, setLevel, renderPlaylist, setupDailyButton, buildSetupScreen, updatePlatformUI } from './ui.js';
 import { handleHostSetup, handleJoinScreen, createRoom, joinRoom, startMultiplayerGame, cancelLobby, cancelActiveGame, submitClientTextGuess, requestClientLifeline } from './multiplayer.js';
 
 import * as SongTrivia from './gameLogic.js';
