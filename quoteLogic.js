@@ -373,7 +373,8 @@ export function evaluateMultiplayerRound(players) {
     let fbHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:15px; font-weight:bold;">`;
     const playerIds = Object.keys(players);
     const realAuthor = state.songs[state.curIdx].a;
-    
+    const results = []; // We collect the new scores here
+
     playerIds.forEach((pid, index) => {
         const p = players[pid];
         let roundPts = 0;
@@ -383,20 +384,21 @@ export function evaluateMultiplayerRound(players) {
             state.streaks[index]++;
             roundPts = p.guess.time * 10;
             if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundPts += 50; 
-            
             fbHTML += `<div style="color:var(--success); font-size:1.1rem; font-weight:bold;">✅ ${p.nickname || p.name || "Player"}: +${roundPts}</div>`;
-            state.rawScores[index] += roundPts;
         } else {
             fbHTML += `<div style="color:var(--fail); font-size:1.1rem; font-weight:bold;">❌ ${p.nickname || p.name || "Player"}: 0</div>`;
             state.streaks[index] = 0;
         }
+        // Save the updated score for this player
+        results.push({ id: pid, newScore: (p.score || 0) + roundPts });
     });
 
     fbHTML += `</div><div style="font-size:1.2rem; color:var(--text-muted);">Answer: <strong style="color:var(--primary);">${realAuthor}</strong></div>`;
     document.getElementById('feedback').innerHTML = fbHTML; 
     
     state.curIdx++; 
-    setTimeout(nextRound, 4000); 
+    window.finalizeMultiplayerRound(results); // Hand off the scores to the Console!
+    setTimeout(nextRound, 4000); // Trigger the next round locally
 }
 
 function endGameSequence() {
@@ -416,8 +418,12 @@ function endGameSequence() {
             let finalResults = [];
             
             pIds.forEach((pid, index) => {
-                finalResults.push({ name: players[pid].name, score: normalizedScores[index], id: pid });
-                db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: normalizedScores[index] });
+                // Read from Firebase!
+                const rawFirebaseScore = players[pid].score || 0;
+                const normScore = Math.min(1000, Math.round((rawFirebaseScore / maxRawPossible) * 1000));
+                
+                finalResults.push({ name: players[pid].name, score: normScore, id: pid });
+                db.ref(`rooms/${state.roomCode}/players/${pid}`).update({ finalScore: normScore });
             });
             
             finalResults.sort((a, b) => b.score - a.score); 
