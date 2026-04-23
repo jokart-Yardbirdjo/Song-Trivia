@@ -521,25 +521,26 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
 export async function evaluateMultiplayerRound(players) {
     if (state.isProcessing) return;
     state.isProcessing = true;
-    clearInterval(state.timerId);
+    if (state.timerId) clearInterval(state.timerId);
 
     const results = [];
     const isDouble = !isSuddenDeath() && state.doubleRounds.includes(state.curIdx);
     let fbHTML = `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:15px; font-weight:bold;">`;
     
-    // 👇 NEW: Track if anyone ruins the run
     let fatalMistake = false;
     let guiltyPlayer = "";
 
     Object.keys(players).forEach((pid, index) => {
         const p = players[pid];
         let roundPts = 0;
+        
+        // Determine if they were correct
         const correct = p.guess && p.guess.isMC && p.guess.correct;
 
         if (correct) {
             state.streaks[index] = (state.streaks[index] || 0) + 1;
-            const speedFactor = p.guess.time / state.timeLimit;
-            roundPts = Math.round(100 + (speedFactor * 100)); // Standard speed points
+            const speedFactor = (p.guess.time || 0) / state.timeLimit;
+            roundPts = Math.round(100 + (speedFactor * 100));
             
             if (state.streaks[index] > 0 && state.streaks[index] % 3 === 0) roundPts += 50;
             if (isDouble) roundPts *= 2;
@@ -550,7 +551,7 @@ export async function evaluateMultiplayerRound(players) {
             state.streaks[index] = 0;
             fbHTML += `<div style="color:var(--fail); font-size:1.1rem;">❌ ${p.name}: 0</div>`;
             
-            // 👇 NEW: If it's Sudden Death and they missed, trigger the fail state
+            // If Sudden Death is active, ANY wrong answer kills the run
             if (isSuddenDeath()) {
                 fatalMistake = true;
                 guiltyPlayer = p.name;
@@ -562,20 +563,25 @@ export async function evaluateMultiplayerRound(players) {
 
     fbHTML += `</div>`;
     
-    // 👇 NEW: Handle the Room-Wide Elimination
     if (fatalMistake) {
         document.getElementById('feedback').innerHTML = fbHTML + `
             <div style="color:var(--fail); font-size:2rem; font-weight:900; margin-top:15px; line-height:1;">💀 FATAL MISTAKE!</div>
             <div style="color:var(--fail); font-size:1.2rem; margin-top:5px;"><strong>${guiltyPlayer}</strong> eliminated the room!</div>
         `;
+        
+        // Clean up the phones
         window.finalizeMultiplayerRound(results);
-        setTimeout(endGameSequence, 5000); // Send everyone to the final scoreboard
+        
+        // Wait 4 seconds, then strictly end the game. Return prevents nextRound!
+        setTimeout(endGameSequence, 4000);
         return; 
     }
 
-    // Otherwise, advance normally
+    // If we survive, track the round and advance
+    state.sdRoundsAlive++;
     document.getElementById('feedback').innerHTML = fbHTML;
     state.curIdx++;
+    
     window.finalizeMultiplayerRound(results);
     setTimeout(nextRound, 4000);
 }
