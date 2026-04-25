@@ -612,7 +612,7 @@ function _renderGameplayUI(imageUrl) {
     // ── Inject image + grid + score badge into #feedback ──
     _setFeedback(`
         <div class="reveal-image-container">
-            <img class="reveal-image" src="${imageUrl}" alt="Guess this image" crossorigin="anonymous">
+            <img class="reveal-image" src="${imageUrl}">
             <div class="grid-overlay">${gridHTML}</div>
             <div class="reveal-score-badge" id="reveal-score-badge">1000 pts</div>
         </div>
@@ -954,9 +954,12 @@ async function _fetchWikipediaImage(pageTitle) {
  * Queries The Movie Database (TMDB) for high-resolution theatrical posters.
  */
 async function _fetchTMDBImage(movieTitle) {
-    // Hardcoded TMDB key for seamless player UX
     const apiKey = "1bcd3d06b740a01fae3d8365f9faf895";
-    const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(movieTitle)}&api_key=${apiKey}&language=en-US&page=1&include_adult=false`;
+    
+    // AUTO-HEAL: Strips Wikipedia tags like "(2000 film)" so TMDB can find it
+    const cleanTitle = movieTitle.replace(/\s*\(.*?\)\s*/g, '').trim();
+    
+    const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanTitle)}&api_key=${apiKey}&language=en-US&page=1&include_adult=false`;
     
     try {
         const res = await fetch(url);
