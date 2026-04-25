@@ -338,3 +338,24 @@ window.handleRevealGuess = function(guessedAnswer) {
     clearInterval(revealState.timerInterval);
     endRound();
 };
+
+// ==========================================
+// PHASE 6: SYSTEM CONTRACT STUBS
+// Required by app.js validateCartridge()
+// ==========================================
+export function handleStop() { 
+    // Logic for the host forcefully ending the game early
+}
+export function resetStats() { 
+    // Logic to clear local storage stats for this specific game
+}
+export function shareChallenge() { 
+    // Logic to generate the copy-paste emoji results
+}
+export function renderStatsUI() { 
+    // Logic to draw the specific stats modal data
+}
+export function evaluateGuess(isCorrect) { 
+    // Required by global window.evaluateGuess hook, though we handle 
+    // our multiple choice guesses locally via handleRevealGuess.
+}
