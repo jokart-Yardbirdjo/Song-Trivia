@@ -2,15 +2,15 @@
  * ==============================================================================
  * YARDBIRD'S GAMES - CARTRIDGE: THE REVEAL (revealLogic.js)
  * ==============================================================================
- * Role: Handles the visual pattern-recognition game using the 12-Second Grid.
- * Architecture: Local JSON Database + Wikipedia Action API for keyless images.
+ * Role: Visual pattern-recognition using the 12-Second Grid.
+ * Architecture: Hybrid! Local JSON (Party Pack) or OpenAI (Infinite AI) -> Wikipedia Image API.
  * * PHASES:
- * 1. Manifest & Config   (Setup screen data & System Stubs)
- * 2. Local State         (Cartridge variables & Dynamic CSS)
- * 3. Core Game Loop      (Start, Round Management, End)
- * 4. Data & Network      (JSON loading, Wikipedia fetching)
- * 5. Mechanics & UI      (12s Grid Timer, Score Evaluation)
- * 6. Stats & Sharing     (Locker Room UI, Persistence)
+ * 1. Manifest & Setup Hooks (UI Routing for AI)
+ * 2. Local State & CSS
+ * 3. Core Game Loop (Start, Round Management, End)
+ * 4. Data & Network (JSON Loader, OpenAI Fetcher, Wikipedia Image API)
+ * 5. Mechanics & UI (Fisher-Yates Grid Timer, Score Evaluation)
+ * 6. Stats & Sharing
  * ==============================================================================
  */
 
@@ -18,7 +18,7 @@ import { db } from './firebase.js';
 import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
 
 // ==========================================
-// PHASE 1: MANIFEST & SYSTEM STUBS
+// PHASE 1: MANIFEST & SETUP HOOKS
 // ==========================================
 
 export const manifest = {
@@ -46,10 +46,55 @@ export const manifest = {
     ]
 };
 
-// System Contract Stubs (Required by app.js to prevent crashes)
+// System Contract Stubs
 export function handleStop() { return; }
 export function forceLifeline() { return; }
 export function startDailyChallenge() { alert("Daily mode coming soon!"); }
+
+/**
+ * UI Hook: Triggered when a player selects a Mode on the setup screen.
+ * Draws the "Party Pack vs Infinite AI" sub-menu.
+ */
+export function onModeSelect(mode) {
+    state.gameState.sub = 'party_pack';
+    document.getElementById('sub-label').innerText = "Select Data Source";
+    const container = document.getElementById('sub-pills');
+    
+    if (container) {
+        container.innerHTML = '';
+        const pillParty = document.createElement('div');
+        pillParty.className = `pill pill-wide active`;
+        pillParty.innerText = "📦 Party Pack";
+        pillParty.onclick = () => window.setSub('party_pack', pillParty);
+
+        const pillAI = document.createElement('div');
+        pillAI.className = `pill pill-wide`;
+        pillAI.innerText = "✨ Infinite AI";
+        pillAI.onclick = () => window.setSub('ai_infinite', pillAI);
+
+        container.appendChild(pillParty);
+        container.appendChild(pillAI);
+    }
+    document.getElementById('custom-input').classList.add('hidden');
+    document.getElementById('sub-selection-area').classList.remove('hidden');
+}
+
+/**
+ * UI Hook: Triggered when Party Pack or Infinite AI is clicked.
+ */
+export function onSubSelect(val) {
+    const customInput = document.getElementById('custom-input');
+    if (val === 'ai_infinite') {
+        customInput.classList.remove('hidden');
+        customInput.placeholder = "Paste your OpenAI API Key (sk-...)";
+        customInput.type = "password";
+        // Attempt to auto-fill from previous plays
+        const savedKey = localStorage.getItem('yardbird_openai_key');
+        if (savedKey) customInput.value = savedKey;
+    } else {
+        customInput.classList.add('hidden');
+    }
+}
 
 
 // ==========================================
@@ -58,14 +103,13 @@ export function startDailyChallenge() { alert("Daily mode coming soon!"); }
 
 const revealState = {
     localDB: null,
-    queue: [],             // Shuffled deck of prompts to guarantee NO repeats
-    currentData: null,     // The active { imageKeyword, answer, wrong } object
-    maxTime: 12.0,         // Locked to 12 seconds
-    blocksRemaining: [],   // Tracks which grid blocks haven't vanished yet
+    queue: [],             
+    currentData: null,     
+    maxTime: 12.0,         
+    blocksRemaining: [],   
     currentScorePotential: 0
 };
 
-// Hardware-accelerated CSS for the Grid Mechanic
 const style = document.createElement('style');
 style.innerHTML = `
     .reveal-image-container {
@@ -91,15 +135,15 @@ style.innerHTML = `
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: repeat(4, 1fr);
-        gap: 2px; /* Slight gap makes it look like physical tiles */
+        gap: 2px;
     }
     .grid-block {
-        background: #121212; /* Deep matte black */
+        background: #121212; 
         transition: opacity 0.2s ease, transform 0.2s ease;
     }
     .grid-block.hidden {
         opacity: 0;
-        transform: scale(0.8); /* Slight shrink effect as it vanishes */
+        transform: scale(0.8);
     }
 `;
 document.head.appendChild(style);
@@ -110,14 +154,12 @@ document.head.appendChild(style);
 // ==========================================
 
 export async function startGame() {
-    // 1. Clean Global State
     state.curIdx = 0;
     state.numPlayers = 1; 
     state.maxRounds = state.gameState.rounds;
     state.rawScores = [0];
     state.streaks = [0];
     
-    // 2. Generate 2X Bonus Rounds (1 in every 5 rounds)
     state.doubleRounds = [];
     for (let i = 0; i < state.maxRounds; i += 5) {
         let min = i === 0 ? 1 : i; 
@@ -125,7 +167,6 @@ export async function startGame() {
         if (min <= max) state.doubleRounds.push(Math.floor(Math.random() * (max - min + 1)) + min);
     }
 
-    // 3. Prep UI
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('play-screen').classList.remove('hidden');
     document.querySelectorAll('.header-btn').forEach(btn => btn.classList.add('hidden'));
@@ -134,18 +175,21 @@ export async function startGame() {
     document.getElementById('visualizer').classList.add('hidden');
     document.getElementById('reveal-art').style.display = 'none';
     
-    document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.5rem; margin-top:40px;">Initializing Grid Engine...</div>`;
+    document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.5rem; margin-top:40px;">Initializing System...</div>`;
 
-    // 4. Load Database and Build Queue
-    await loadLocalDatabase();
-    const modeData = revealState.localDB[state.gameState.mode];
-    if (!modeData || modeData.length === 0) {
-        alert("Fatal Error: No data found for this mode.");
-        location.reload(); return;
+    // HYBRID DATA ROUTING
+    if (state.gameState.sub === 'ai_infinite') {
+        const apiKey = document.getElementById('custom-input').value.trim();
+        if (!apiKey.startsWith('sk-')) {
+            alert("Invalid API Key. Falling back to Party Pack.");
+            await loadLocalDataAndQueue();
+        } else {
+            localStorage.setItem('yardbird_openai_key', apiKey);
+            await fetchInfiniteAIData(apiKey, state.gameState.mode, state.maxRounds);
+        }
+    } else {
+        await loadLocalDataAndQueue();
     }
-    
-    // Shuffle the deck so we can pop safely without repeats
-    revealState.queue = [...modeData].sort(() => 0.5 - Math.random());
 
     nextRound();
 }
@@ -154,14 +198,12 @@ async function nextRound() {
     if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
     state.isProcessing = false;
 
-    // 1. Pop from queue (Ensures absolutely NO repeating clues)
     revealState.currentData = revealState.queue.pop();
     if (!revealState.currentData) {
         console.warn("Out of database prompts! Ending game early.");
         endGameSequence(); return;
     }
 
-    // 2. Fetch & Preload Image
     document.getElementById('feedback').innerHTML = `<div style="color:var(--text-muted); font-size:1.2rem; margin-top:40px; animation: pulse 1.5s infinite;">Searching Wikipedia...</div>`;
     const imageUrl = await fetchWikipediaImage(revealState.currentData.imageKeyword);
     
@@ -173,7 +215,6 @@ async function nextRound() {
     document.getElementById('feedback').innerHTML = `<div style="color:var(--text-muted); font-size:1.2rem; margin-top:40px; animation: pulse 1.5s infinite;">Downloading high-res payload...</div>`;
     await preloadImage(imageUrl);
 
-    // 3. Build Gameplay UI
     renderGameplayUI(imageUrl);
     startGridTimer();
 }
@@ -182,12 +223,62 @@ async function nextRound() {
 // PHASE 4: DATA & NETWORK
 // ==========================================
 
-async function loadLocalDatabase() {
+async function loadLocalDataAndQueue() {
     try {
         const response = await fetch('./db_reveal.json');
         revealState.localDB = await response.json();
+        const modeData = revealState.localDB[state.gameState.mode] || [];
+        revealState.queue = shuffleArray([...modeData]);
     } catch (err) {
         console.error("Failed to load db_reveal.json:", err);
+    }
+}
+
+/**
+ * Contacts OpenAI to generate perfect JSON objects on the fly.
+ */
+async function fetchInfiniteAIData(apiKey, mode, roundsNeeded) {
+    document.getElementById('feedback').innerHTML = `<div style="color:var(--highlight); font-size:1.2rem; margin-top:40px; animation: pulse 1.5s infinite;">✨ AI is generating infinite content...</div>`;
+    
+    const catMap = {
+        media: "Famous Movie Posters and Iconic Album Covers",
+        megastars: "A-List Actors, Historical Figures, Pop Icons, and Star Athletes",
+        masterpieces: "The most famous Paintings and Sculptures in history"
+    };
+
+    // We ask for a few extra rounds just in case Wikipedia fails to find an image for one
+    const prompt = `Generate a JSON array of ${roundsNeeded + 3} trivia items for a visual guessing game. 
+    Category: ${catMap[mode]}.
+    CRITICAL INSTRUCTION: The 'imageKeyword' field MUST be the exact, perfectly accurate English Wikipedia page title for that subject (e.g. if it is the movie The Matrix, it must be 'The Matrix (franchise)' or 'The Matrix').
+    
+    Return EXACTLY this JSON structure and absolutely nothing else. No markdown blocks, no backticks.
+    [
+      {
+        "imageKeyword": "Wikipedia_Page_Title",
+        "answer": "Clean Display Name",
+        "wrong": ["Believable Wrong Answer 1", "Wrong 2", "Wrong 3"]
+      }
+    ]`;
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{ role: "system", content: prompt }],
+                temperature: 0.7
+            })
+        });
+
+        const data = await response.json();
+        const jsonString = data.choices[0].message.content.trim().replace(/```json/g, '').replace(/```/g, '');
+        
+        revealState.queue = JSON.parse(jsonString);
+    } catch (err) {
+        console.error("OpenAI Generation Failed:", err);
+        alert("AI Generation failed. Falling back to Party Pack.");
+        await loadLocalDataAndQueue();
     }
 }
 
@@ -201,18 +292,31 @@ async function fetchWikipediaImage(pageTitle) {
         const pageId = Object.keys(pages)[0];
         if (pages[pageId].thumbnail && pages[pageId].thumbnail.source) return pages[pageId].thumbnail.source;
         return null;
-    } catch (err) {
-        return null;
-    }
+    } catch (err) { return null; }
 }
 
 function preloadImage(url) {
     return new Promise((resolve) => {
         const img = new Image();
-        img.onload = resolve;
-        img.onerror = resolve; // Resolve even on error to prevent infinite hang
+        img.onload = resolve; img.onerror = resolve; 
         img.src = url;
     });
+}
+
+/**
+ * True Mathematical Shuffle (Fisher-Yates)
+ * Fixes the Javascript `Math.random() - 0.5` bug so grids reveal completely randomly.
+ */
+function shuffleArray(array) {
+    let curId = array.length;
+    while (0 !== curId) {
+        let randId = Math.floor(Math.random() * curId);
+        curId -= 1;
+        let tmp = array[curId];
+        array[curId] = array[randId];
+        array[randId] = tmp;
+    }
+    return array;
 }
 
 // ==========================================
@@ -222,13 +326,11 @@ function preloadImage(url) {
 function renderGameplayUI(imageUrl) {
     const isDouble = state.doubleRounds.includes(state.curIdx);
     
-    // Player Tag & Double Points Indicator
     const tag = document.getElementById('active-player');
     tag.innerText = `ROUND ${state.curIdx + 1}/${state.maxRounds}${isDouble ? ' — ⭐ 2X BONUS' : ''}`;
     tag.style.color = isDouble ? '#f39c12' : 'var(--primary)';
     tag.style.borderColor = isDouble ? '#f39c12' : 'var(--primary)';
 
-    // Update Top Scoreboard
     document.getElementById('score-board').innerHTML = `
         <div class="score-pill" style="border-color:${colors[0]};">
             <div class="p-name" style="color:${colors[0]}">SCORE</div>
@@ -236,12 +338,10 @@ function renderGameplayUI(imageUrl) {
             <div class="p-streak" style="color:${colors[0]}; opacity:${state.streaks[0] > 0 ? 1 : 0}">🔥 ${state.streaks[0]}</div>
         </div>`;
 
-    // Shuffle multiple choice
     let options = [{ str: revealState.currentData.answer, isCorrect: true }];
     revealState.currentData.wrong.forEach(w => options.push({ str: w, isCorrect: false }));
-    options = options.sort(() => 0.5 - Math.random());
+    options = shuffleArray(options); // Uses new perfect shuffle
 
-    // Inject Image and 12-Block Grid Overlay
     let gridHTML = Array.from({length: 12}).map((_, i) => `<div class="grid-block" id="block-${i}"></div>`).join('');
     
     document.getElementById('feedback').innerHTML = `
@@ -261,20 +361,18 @@ function renderGameplayUI(imageUrl) {
         const btn = document.createElement('button');
         btn.className = 'mc-btn';
         btn.innerText = opt.str;
-        // The evaluateGuess hook takes the truth value AND the physical button clicked
         btn.onclick = (e) => window.evaluateGuess(opt.isCorrect, e.target);
         mcContainer.appendChild(btn);
     });
 }
 
 function startGridTimer() {
-    state.timeLeft = revealState.maxTime; // 12.0
+    state.timeLeft = revealState.maxTime; 
     
-    // Create an array of 0-11 and shuffle it so blocks vanish randomly
-    revealState.blocksRemaining = [0,1,2,3,4,5,6,7,8,9,10,11].sort(() => 0.5 - Math.random());
+    // Uses the new Fisher-Yates perfect shuffle to guarantee true random block destruction
+    revealState.blocksRemaining = shuffleArray([0,1,2,3,4,5,6,7,8,9,10,11]);
     let lastSecond = 12;
     
-    // Platform standard timer bar
     const timerElement = document.getElementById('timer');
     timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
     const timerFill = document.getElementById('timer-bar-fill');
@@ -283,16 +381,13 @@ function startGridTimer() {
         state.timeLeft -= 0.1;
         if (state.timeLeft < 0) state.timeLeft = 0;
 
-        // Smooth UI Bar Update
         if (timerFill) {
             timerFill.style.width = `${(state.timeLeft / revealState.maxTime) * 100}%`;
             if (state.timeLeft <= 3) timerFill.style.backgroundColor = 'var(--fail)';
         }
 
-        // Score Potential scales evenly from 1000 down to 0
         revealState.currentScorePotential = Math.floor((state.timeLeft / revealState.maxTime) * 1000);
 
-        // GRID REVEAL LOGIC: Pop one block every time a full second drops
         const currentSecond = Math.ceil(state.timeLeft); 
         if (currentSecond < lastSecond && revealState.blocksRemaining.length > 0) {
             lastSecond = currentSecond;
@@ -301,12 +396,10 @@ function startGridTimer() {
             if (blockEl) blockEl.classList.add('hidden');
         }
 
-        // Sound effect on last 3 seconds
         if (Math.abs(state.timeLeft - Math.round(state.timeLeft)) < 0.05 && state.timeLeft <= 3 && state.timeLeft > 0) {
             sfxTick.play().catch(()=>{});
         }
 
-        // Timeout (Loss)
         if (state.timeLeft <= 0) {
             clearInterval(state.timerId);
             window.evaluateGuess(false, null);
@@ -319,14 +412,11 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
     state.isProcessing = true;
     clearInterval(state.timerId);
 
-    // Disable buttons
     document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
     if (clickedBtn && !isCorrect) clickedBtn.classList.add('wrong');
     
-    // Instantly remove all remaining blocks to reveal the image
     document.querySelectorAll('.grid-block').forEach(b => b.classList.add('hidden'));
 
-    // Highlight the correct answer to train the user
     document.querySelectorAll('#mc-fields .mc-btn').forEach(btn => {
         if (btn.innerText === revealState.currentData.answer) btn.classList.add('correct');
     });
@@ -365,7 +455,6 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
         `);
     }
 
-    // Update Top Scoreboard instantly
     document.getElementById('score-board').innerHTML = `
         <div class="score-pill" style="border-color:${colors[0]}">
             <div class="p-name">SCORE</div>
@@ -375,7 +464,6 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
 
     state.curIdx++;
     
-    // Clean up injected message and move to next round
     setTimeout(() => {
         const msg = document.getElementById('reveal-eval-msg');
         if(msg) msg.remove();
@@ -393,22 +481,17 @@ function endGameSequence() {
     document.getElementById('final-screen').classList.remove('hidden');
     document.getElementById('final-subtitle').innerText = "Speed & Accuracy Evaluation";
     
-    // The Reveal doesn't use the playlist export box, so we hide it
     const playlistBox = document.querySelector('.playlist-box');
     if (playlistBox) playlistBox.style.display = 'none';
 
     const maxScore = state.rawScores[0] || 0;
     
-    // Persist Stats
     state.userStats.the_reveal = state.userStats.the_reveal || { gamesPlayed: 0, highScore: 0 };
-    if (maxScore > state.userStats.the_reveal.highScore) {
-        state.userStats.the_reveal.highScore = maxScore;
-    }
+    if (maxScore > state.userStats.the_reveal.highScore) state.userStats.the_reveal.highScore = maxScore;
     state.userStats.the_reveal.gamesPlayed++;
     state.userStats.platformGamesPlayed++;
     localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 
-    // Fix: Proper Solo End Card Injection!
     const hypeText = maxScore > (state.maxRounds * 600) ? "Eagle Eye! 🦅" : (maxScore > (state.maxRounds * 300) ? "Solid Vision! 👁️" : "Needs Glasses! 👓");
     
     document.getElementById('winner-text').innerHTML = `
@@ -427,7 +510,6 @@ function endGameSequence() {
 }
 
 export function renderStatsUI(revealStats, container) {
-    // Fix: Completely overwrites the modal content so it doesn't look like Song Trivia
     container.innerHTML = `
         <h2 style="color:var(--primary); margin-top:0; text-align:center; border-bottom:2px solid var(--border-light); padding-bottom:15px;">The Reveal Locker</h2>
         <div class="stat-grid">
