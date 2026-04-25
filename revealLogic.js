@@ -173,33 +173,6 @@ export function onModeSelect(mode) {
     const customInput = document.getElementById('custom-input');
     if (customInput) customInput.classList.add('hidden');
 
-    // ── NEW: Inject TMDB Key Input ──
-    let tmdbInput = document.getElementById('tmdb-input');
-    if (!tmdbInput) {
-        tmdbInput = document.createElement('input');
-        tmdbInput.id = 'tmdb-input';
-        tmdbInput.className = 'custom-input hidden';
-        tmdbInput.style.marginTop = '10px';
-        tmdbInput.style.width = '100%';
-        tmdbInput.style.padding = '15px';
-        tmdbInput.style.borderRadius = '12px';
-        tmdbInput.style.border = '2px solid var(--border-light)';
-        
-        if (customInput && customInput.parentNode) {
-            customInput.parentNode.insertBefore(tmdbInput, customInput.nextSibling);
-        }
-    }
-
-    if (mode === 'movies') {
-        tmdbInput.placeholder = "Paste TMDB API Key (Required for Posters)";
-        tmdbInput.type = "password";
-        tmdbInput.classList.remove('hidden');
-        const savedTMDB = localStorage.getItem('yardbird_tmdb_key');
-        if (savedTMDB) tmdbInput.value = savedTMDB;
-    } else {
-        if (tmdbInput) tmdbInput.classList.add('hidden');
-    }
-
     const subArea = document.getElementById('sub-selection-area');
     if (subArea) subArea.classList.remove('hidden');
 }
@@ -491,17 +464,6 @@ export async function startGame() {
     // ── 5. Show initial loading state in the feedback area ──
     _setFeedback(`<div class="reveal-loading-msg">Initializing system...</div>`);
 
-    // ── NEW: Secure the TMDB Key if Movies mode is selected ──
-    if (state.gameState.mode === 'movies') {
-        const tmdbKey = document.getElementById('tmdb-input')?.value.trim();
-        if (!tmdbKey) {
-            alert("A TMDB API Key is required to play the Movies mode. Please paste it in the setup screen.");
-            location.reload();
-            return;
-        }
-        localStorage.setItem('yardbird_tmdb_key', tmdbKey);
-    }
-
     // ── 6. Data routing: Party Pack (local JSON) vs. Infinite AI (OpenAI) ──
     if (state.gameState.sub === 'ai_infinite') {
         const apiKey = (document.getElementById('custom-input')?.value || '').trim();
@@ -573,8 +535,8 @@ async function _nextRound() {
     // ── NEW: Route image fetching to TMDB or Wikipedia ──
     let imageUrl = null;
     if (state.gameState.mode === 'movies') {
-        const tmdbKey = localStorage.getItem('yardbird_tmdb_key');
-        imageUrl = await _fetchTMDBImage(revealState.currentData.imageKeyword, tmdbKey);
+        // No longer reads from localStorage, just calls the fetcher directly
+        imageUrl = await _fetchTMDBImage(revealState.currentData.imageKeyword);
     } else {
         imageUrl = await _fetchWikipediaImage(revealState.currentData.imageKeyword);
     }
@@ -991,14 +953,16 @@ async function _fetchWikipediaImage(pageTitle) {
  * ────────────────────────────────────
  * Queries The Movie Database (TMDB) for high-resolution theatrical posters.
  */
-async function _fetchTMDBImage(movieTitle, apiKey) {
+async function _fetchTMDBImage(movieTitle) {
+    // Hardcoded TMDB key for seamless player UX
+    const apiKey = "1bcd3d06b740a01fae3d8365f9faf895";
     const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(movieTitle)}&api_key=${apiKey}&language=en-US&page=1&include_adult=false`;
+    
     try {
         const res = await fetch(url);
         if (!res.ok) return null;
         const data = await res.json();
         if (data.results && data.results.length > 0 && data.results[0].poster_path) {
-            // w780 provides a crisp image that looks great even when scaled up
             return `https://image.tmdb.org/t/p/w780${data.results[0].poster_path}`;
         }
         return null;
