@@ -366,6 +366,17 @@ function _injectStyles() {
             text-align: center;
             margin-top: 30px;
         }
+        /* ── Reveal MC Buttons: Allow long movie titles to wrap ── */
+        #mc-fields .mc-btn {
+            white-space: normal !important;       /* Turn off single-line forced text */
+            line-height: 1.25 !important;         /* Tighter line spacing for stacked text */
+            padding: 10px 15px !important;
+            min-height: 60px;                     /* Keep buttons uniform height */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
     `;
     document.head.appendChild(style);
 }
@@ -525,6 +536,13 @@ async function _nextRound() {
         console.warn("[TheReveal] Queue exhausted before maxRounds. Ending early.");
         _endGameSequence();
         return;
+    }
+
+    // ── AUTO-CLEANER: Strip Wikipedia tags (e.g., "(1999 film)") from answers ──
+    const stripTags = (str) => str.replace(/\s*\(.*?\)\s*/g, '').trim();
+    revealState.currentData.answer = stripTags(revealState.currentData.answer);
+    if (revealState.currentData.wrong) {
+        revealState.currentData.wrong = revealState.currentData.wrong.map(w => stripTags(w));
     }
 
     // ── Show loading state ──
@@ -904,65 +922,64 @@ Each item must follow this exact shape:
  * _fetchWikipediaImage(pageTitle)
  * ────────────────────────────────
  * Queries the Wikipedia REST API for a page thumbnail.
- * Uses the open API endpoint which supports CORS from any origin.
- *
-/**
- * _fetchWikipediaImage(pageTitle)
- * ────────────────────────────────
- * Queries the Wikipedia REST API for a page thumbnail.
- * UPDATED: Now uses the REST API Summary endpoint to guarantee the primary
- * infobox portrait, filtering out random page assets like SVGs/signatures.
- *
- * WHY WIKIPEDIA REST API?
- * · The standard Action API (prop=pageimages) often returns signatures or maps.
- * · The REST summary API is heavily curated for mobile preview cards, 
- * ensuring we almost always get the celebrity's actual face/portrait.
+ * UPDATED: Uses a Two-Step Resolution to bypass the "CORS Redirect Trap".
+ * * 1. Action API resolves the exact canonical title safely (and gets a fallback).
+ * 2. REST API fetches the high-quality curated Infobox portrait.
  *
  * @param  {string}          pageTitle — Exact Wikipedia article title
  * @return {string|null}               — Thumbnail URL, or null if not found
  */
 async function _fetchWikipediaImage(pageTitle) {
-    const fetchThumb = async (titleToFetch) => {
-        // The REST API expects underscores for spaces
-        const formattedTitle = encodeURIComponent(titleToFetch.replace(/ /g, '_'));
-        const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${formattedTitle}`;
-        
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        
-        const data = await res.json();
-        
-        // The REST API heavily curates the 'thumbnail' object to be the main Infobox image.
-        if (data.thumbnail && data.thumbnail.source) {
-            // The API usually returns a 320px width image by default.
-            // We bump the resolution to 600px for a crisper experience on TV/Desktop
-            // by dynamically replacing the resolution string in the Wikimedia CDN URL.
-            return data.thumbnail.source.replace(/\/\d+px-/, '/600px-');
-        }
-        return null;
-    };
-
     try {
-        // Attempt 1: Direct exact match (REST API handles redirects natively)
-        let img = await fetchThumb(pageTitle);
-        if (img) return img;
-
-        // Attempt 2: Auto-heal via OpenSearch
-        // Searches Wikipedia for the exact term and tries the top 3 closest auto-complete suggestions.
-        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(pageTitle)}&limit=3&namespace=0&format=json&origin=*`;
-        const searchRes = await fetch(searchUrl);
-        const searchData = await searchRes.json();
-        const suggestions = searchData[1] || [];
-
-        for (let suggestion of suggestions) {
-            if (suggestion.toLowerCase() !== pageTitle.toLowerCase()) {
-                img = await fetchThumb(suggestion);
-                if (img) return img; // Auto-Heal successful!
+        // Step 1: Use the Action API to resolve the EXACT canonical title. 
+        // The Action API handles redirects natively and has rock-solid CORS (&origin=*).
+        // We also request 'pageimages' here as a safety fallback.
+        const resolveUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=pageimages&pithumbsize=600&redirects=1&format=json&origin=*`;
+        const resolveRes = await fetch(resolveUrl);
+        const resolveData = await resolveRes.json();
+        
+        const pages = resolveData.query?.pages;
+        if (!pages) return null;
+        
+        const pageId = Object.keys(pages)[0];
+        if (pageId === "-1") {
+            // Auto-heal via OpenSearch if the title is completely wrong or misspelled
+            const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(pageTitle)}&limit=1&namespace=0&format=json&origin=*`;
+            const searchRes = await fetch(searchUrl);
+            const searchData = await searchRes.json();
+            const suggestions = searchData[1] || [];
+            if (suggestions.length > 0 && suggestions[0].toLowerCase() !== pageTitle.toLowerCase()) {
+                return await _fetchWikipediaImage(suggestions[0]); // Recursive heal
             }
+            return null;
         }
-        return null;
+        
+        const canonicalTitle = pages[pageId].title;
+        const fallbackImage = pages[pageId].thumbnail?.source || null;
+
+        // Step 2: Now call the REST API using the EXACT canonical title.
+        // This prevents the 301 Redirect that causes CORS to fail in the browser.
+        const formattedTitle = encodeURIComponent(canonicalTitle.replace(/ /g, '_'));
+        const restUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${formattedTitle}`;
+        
+        try {
+            const restRes = await fetch(restUrl);
+            if (restRes.ok) {
+                const data = await restRes.json();
+                // The REST API heavily curates the 'thumbnail' object to be the main Infobox image
+                if (data.thumbnail && data.thumbnail.source) {
+                    return data.thumbnail.source.replace(/\/\d+px-/, '/600px-');
+                }
+            }
+        } catch (restErr) {
+            console.warn(`[TheReveal] REST API blocked or failed for ${canonicalTitle}.`);
+        }
+        
+        // Step 3: If the REST API had no image or failed, use the Action API fallback
+        return fallbackImage;
+
     } catch (err) {
-        console.warn(`[TheReveal] Wikipedia fetch failed for "${pageTitle}":`, err);
+        console.warn(`[TheReveal] Wikipedia fetch completely failed for "${pageTitle}":`, err);
         return null;
     }
 }
