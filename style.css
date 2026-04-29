@@ -1191,11 +1191,14 @@ body.client-mode #main-title        {
        Note: gradient text properties (background-clip, text-fill-color)
        are not inherited so they must be re-declared inside the media query. */
     #main-title {
-        font-size: 2.2rem;
+        font-size: clamp(1.2rem, 5vw, 1.8rem); /* Dynamically scales down to fit */
         font-weight: 900;
-        letter-spacing: 3px;
+        letter-spacing: 2px; /* Tighter letter spacing to save space */
         padding: 0 75px 0 45px;
         text-align: center;
+        white-space: nowrap;      /* Prevents title from stacking */
+        overflow: hidden;         /* Prevents text from bleeding into icons */
+        text-overflow: ellipsis;  /* Gracefully adds '...' if it still overflows */
         background: linear-gradient(135deg, var(--primary), #8e2de2);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
