@@ -93,10 +93,15 @@ export const sfxTick = new Audio('https://actions.google.com/sounds/v1/alarms/be
 export const sfxCheer = new Audio('https://actions.google.com/sounds/v1/crowds/crowd_cheer.ogg');
 export const sfxBuzzer = new Audio('https://actions.google.com/sounds/v1/alarms/buzzer_alarm.ogg');
 
+// NEW: Global Background Music Player (Source set dynamically by app.js)
+export const bgm = new Audio();
+bgm.loop = true;
+
 // Mixing Levels
 sfxTick.volume = 0.5; 
 sfxCheer.volume = 0.7; 
 sfxBuzzer.volume = 0.4;
+bgm.volume = 0.25;
 
 
 // ==========================================
