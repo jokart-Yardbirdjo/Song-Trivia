@@ -906,28 +906,44 @@ Each item must follow this exact shape:
  * Queries the Wikipedia REST API for a page thumbnail.
  * Uses the open API endpoint which supports CORS from any origin.
  *
- * WHY WIKIPEDIA?
- *   · Completely free, no API key required.
- *   · Returns real, recognizable photos of celebrities, artworks, albums.
- *   · The thumbnail URL is a direct Wikimedia CDN link — no CORS issues.
+/**
+ * _fetchWikipediaImage(pageTitle)
+ * ────────────────────────────────
+ * Queries the Wikipedia REST API for a page thumbnail.
+ * UPDATED: Now uses the REST API Summary endpoint to guarantee the primary
+ * infobox portrait, filtering out random page assets like SVGs/signatures.
+ *
+ * WHY WIKIPEDIA REST API?
+ * · The standard Action API (prop=pageimages) often returns signatures or maps.
+ * · The REST summary API is heavily curated for mobile preview cards, 
+ * ensuring we almost always get the celebrity's actual face/portrait.
  *
  * @param  {string}          pageTitle — Exact Wikipedia article title
  * @return {string|null}               — Thumbnail URL, or null if not found
  */
 async function _fetchWikipediaImage(pageTitle) {
     const fetchThumb = async (titleToFetch) => {
-        const encoded = encodeURIComponent(titleToFetch);
-        // Added &redirects=1 to follow Wikipedia redirects automatically
-        const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encoded}&prop=pageimages&format=json&pithumbsize=600&redirects=1&origin=*`;
+        // The REST API expects underscores for spaces
+        const formattedTitle = encodeURIComponent(titleToFetch.replace(/ /g, '_'));
+        const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${formattedTitle}`;
+        
         const res = await fetch(url);
         if (!res.ok) return null;
+        
         const data = await res.json();
-        const page = Object.values(data?.query?.pages || {})[0];
-        return page?.thumbnail?.source || null;
+        
+        // The REST API heavily curates the 'thumbnail' object to be the main Infobox image.
+        if (data.thumbnail && data.thumbnail.source) {
+            // The API usually returns a 320px width image by default.
+            // We bump the resolution to 600px for a crisper experience on TV/Desktop
+            // by dynamically replacing the resolution string in the Wikimedia CDN URL.
+            return data.thumbnail.source.replace(/\/\d+px-/, '/600px-');
+        }
+        return null;
     };
 
     try {
-        // Attempt 1: Direct exact match (handles redirects natively now)
+        // Attempt 1: Direct exact match (REST API handles redirects natively)
         let img = await fetchThumb(pageTitle);
         if (img) return img;
 
