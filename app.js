@@ -171,7 +171,21 @@ window.selectGame = (gameId) => {
 // These hooks intercept that call and pass it down to whatever game is currently active.
 
 window.startDailyChallenge = () => window.activeCartridge.startDailyChallenge();
-window.startGame = () => window.activeCartridge.startGame();
+
+// ── SILENT AUDIO UNLOCKER ──
+window.startGame = () => {
+    // Browsers block audio if there are 'await' network calls before play().
+    // By playing and instantly pausing exactly when the user clicks "Let's Go!", 
+    // we permanently unlock the audio element for the session.
+    if (bgm) {
+        bgm.play().catch(() => {}); // Catch prevents console errors if it's already playing
+        bgm.pause();
+    }
+    
+    // Now trigger the actual game boot sequence
+    window.activeCartridge.startGame();
+};
+
 window.handleStop = () => window.activeCartridge.handleStop();
 window.forceLifeline = () => window.activeCartridge.forceLifeline();
 window.evaluateGuess = (isCorrect, clickedBtn) => window.activeCartridge.evaluateGuess(isCorrect, clickedBtn);
