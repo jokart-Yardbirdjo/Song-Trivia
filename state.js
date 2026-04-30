@@ -63,22 +63,8 @@ export const state = {
     startTime: 0,
 
     // --- 7. PERSISTENCE (LOCAL STORAGE) ---
-    // We parse the entire platform locker. If a user is migrating from older versions, 
-    // we pull `yardbirdStatsV6` as a fallback for Song Trivia.
     userStats: JSON.parse(localStorage.getItem('yardbirdPlatformStats')) || { 
-        platformGamesPlayed: 0,
-        song_trivia: JSON.parse(localStorage.getItem('yardbirdStatsV6')) || {
-            gamesPlayed: 0, totalGuesses: 0, correctGuesses: 0, hsText: 0, hsMC: 0, sniperHits: 0, 
-            lastPlayedDate: null, currentStreak: 0, playedDailyToday: false, 
-            modesPlayed: { genre: false, artist: false, movie: false }, 
-            trophies: { perf: false, mara: false, snip: false, streak: false, expl: false } 
-        },
-        fast_math: {
-            gamesPlayed: 0, hsText: 0, correctGuesses: 0, totalGuesses: 0
-        },
-        consensus: { gamesPlayed: 0, highScore: 0 }, 
-        who_said_it: { gamesPlayed: 0, highScore: 0 },
-        the_reveal: { gamesPlayed: 0, highScore: 0 } 
+        platformGamesPlayed: 0
     },
     globalHighScore: localStorage.getItem('yardbirdHighScore') || 0
 };
