@@ -36,6 +36,7 @@ import * as Consensus from './consensusLogic.js';
 import * as QuoteTrivia from './quoteLogic.js';
 import * as TheReveal from './revealLogic.js';
 
+
 // ==========================================
 // THE REGISTRY: Single source of truth for games
 // ==========================================
@@ -44,7 +45,7 @@ export const cartridgeRegistry = [
     { id: 'fast_math',   module: FastMath,   icon: '⚡' },
     { id: 'the_reveal',  module: TheReveal,  icon: '👁️' },
     { id: 'consensus',   module: Consensus,  icon: '🤔' },
-    { id: 'who_said_it', module: WhoSaidIt,  icon: '💬' }
+    { id: 'who_said_it', module: QuoteTrivia,  icon: '💬' } // <--- FIXED THIS LINE
 ];
 
 // Default the system to Song Trivia on load to prevent null references
@@ -216,11 +217,12 @@ window.onload = () => {
  * Global DOM Event Listeners
  * Allows players to hit "Enter" on their keyboard to submit text answers.
  */
+
+// Inject the new horizontal carousel menu!
+buildCartridgeMenu(cartridgeRegistry);
+
 document.addEventListener("DOMContentLoaded", () => {
-    
-    // Inject the new horizontal carousel menu!
-    buildCartridgeMenu(cartridgeRegistry);
-    
+           
     const triggerSubmit = (e) => { 
         if (e.key === 'Enter') document.getElementById('submit-btn').click(); 
     };
