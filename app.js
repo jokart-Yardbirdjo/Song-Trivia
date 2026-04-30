@@ -20,7 +20,8 @@ import { state, bgm } from './state.js';
 
 import { 
     showModal, hideModal, setMode, setSub, setPill, setLevel, 
-    renderPlaylist, setupDailyButton, buildSetupScreen, updatePlatformUI 
+    renderPlaylist, setupDailyButton, buildSetupScreen, updatePlatformUI,
+    buildCartridgeMenu // <--- ADD THIS HERE
 } from './ui.js';
 import { 
     handleHostSetup, handleJoinScreen, createRoom, joinRoom, 
@@ -34,6 +35,17 @@ import * as FastMath from './mathLogic.js';
 import * as Consensus from './consensusLogic.js';
 import * as QuoteTrivia from './quoteLogic.js';
 import * as TheReveal from './revealLogic.js';
+
+// ==========================================
+// THE REGISTRY: Single source of truth for games
+// ==========================================
+export const cartridgeRegistry = [
+    { id: 'song_trivia', module: SongTrivia, icon: '🎵' },
+    { id: 'fast_math',   module: FastMath,   icon: '⚡' },
+    { id: 'the_reveal',  module: TheReveal,  icon: '👁️' },
+    { id: 'consensus',   module: Consensus,  icon: '🤔' },
+    { id: 'who_said_it', module: WhoSaidIt,  icon: '💬' }
+];
 
 // Default the system to Song Trivia on load to prevent null references
 window.activeCartridge = SongTrivia;
@@ -95,31 +107,16 @@ function validateCartridge(cartridge) {
  * @param {string} gameId - The ID of the game from the main menu.
  */
 window.loadCartridge = (gameId) => {
-    let targetCartridge;
+       
+    // Automatically find the game in the registry instead of using if/else
+    const cartridgeDef = cartridgeRegistry.find(c => c.id === gameId);
     
-    // Routing Switchboard & Dynamic BGM Setup
-    if (gameId === 'fast_math') {
-        targetCartridge = FastMath;
-        bgm.src = 'assets/audio/quizmusic.mp3'; 
+    if (!cartridgeDef) {
+        console.error("Cartridge not found in registry:", gameId);
+        return;
     }
-    else if (gameId === 'consensus') {
-        targetCartridge = Consensus;
-        bgm.src = 'assets/audio/quizmusic.mp3'; 
-    }
-    else if (gameId === 'who_said_it') {
-        targetCartridge = QuoteTrivia;
-        bgm.src = ''; // Quotes has its own audio vibe
-    }
-    // 👇 ADD THIS BLOCK 👇
-    else if (gameId === 'the_reveal') {
-        targetCartridge = TheReveal;
-        bgm.src = 'assets/audio/quizmusic.mp3'; // Or whichever BGM track you want for this game!
-    }
-    // 👆 END NEW BLOCK 👆
-    else {
-        targetCartridge = SongTrivia;
-        bgm.src = ''; // Song Trivia plays iTunes audio
-    }
+    
+    let targetCartridge = cartridgeDef.module;
     
     // Strict Validation: Will throw an error if the cartridge is incomplete
     validateCartridge(targetCartridge);
@@ -220,6 +217,10 @@ window.onload = () => {
  * Allows players to hit "Enter" on their keyboard to submit text answers.
  */
 document.addEventListener("DOMContentLoaded", () => {
+    
+    // Inject the new horizontal carousel menu!
+    buildCartridgeMenu(cartridgeRegistry);
+    
     const triggerSubmit = (e) => { 
         if (e.key === 'Enter') document.getElementById('submit-btn').click(); 
     };
