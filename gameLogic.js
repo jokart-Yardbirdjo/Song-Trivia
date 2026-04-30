@@ -29,7 +29,14 @@ export const manifest = {
         { id: "medium", title: "🟡 Medium (Deep Catalog)", desc: "30s. All songs, including B-sides. Lifeline enabled." },
         { id: "hard", title: "🔴 Hard (The 10s Sprint)", desc: "10s cutoff. Pure recall typing. No Lifeline." }
     ],
-    clientUI: "typing-and-mc" 
+    clientUI: "typing-and-mc", 
+    // Tell the engine EXACTLY what baseline memory this game needs to function
+    initialStats: { 
+        gamesPlayed: 0, 
+        highScore: 0, 
+        trophies: [], 
+        lastPlayedDate: null 
+    }
 };
 
 function saveStats() {
