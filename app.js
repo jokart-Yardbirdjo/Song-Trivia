@@ -172,33 +172,7 @@ window.selectGame = (gameId) => {
 
 window.startDailyChallenge = () => window.activeCartridge.startDailyChallenge();
 
-// ── SILENT AUDIO UNLOCKER (PROMISE FIX) ──
-window.startGame = () => {
-    // Browsers require a physical click to unlock audio.
-    if (bgm) {
-        // 1. Mute the audio so the user doesn't hear a split-second glitch
-        bgm.volume = 0; 
-        
-        // 2. Trigger the play event and capture the Promise
-        const unlockPromise = bgm.play();
-        
-        // 3. Wait for the browser to successfully register the play event
-        if (unlockPromise !== undefined) {
-            unlockPromise.then(() => {
-                // Audio is now officially unlocked! 
-                // Pause it, rewind it, and unmute it for when the game actually starts.
-                bgm.pause();
-                bgm.currentTime = 0;
-                bgm.volume = 1; 
-            }).catch(e => {
-                console.warn("Audio unlock caught a policy error:", e);
-            });
-        }
-    }
-    
-    // Now trigger the actual game boot sequence
-    window.activeCartridge.startGame();
-};
+window.startGame = () => window.activeCartridge.startGame();
 
 window.handleStop = () => window.activeCartridge.handleStop();
 window.forceLifeline = () => window.activeCartridge.forceLifeline();
@@ -250,6 +224,26 @@ window.onload = () => {
 buildCartridgeMenu(cartridgeRegistry);
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    // ── THE NUCLEAR AUDIO UNLOCKER ──
+    // The exact millisecond the user taps ANYWHERE on the screen for the first time,
+    // silently unlock the audio engine. 
+    let audioUnlocked = false;
+    document.body.addEventListener('pointerdown', () => {
+        if (!audioUnlocked && bgm) {
+            bgm.volume = 0; // Mute it
+            const unlockPromise = bgm.play();
+            
+            if (unlockPromise !== undefined) {
+                unlockPromise.then(() => {
+                    bgm.pause();
+                    bgm.currentTime = 0;
+                    bgm.volume = 1; // Unmute it for later
+                    audioUnlocked = true; // Never run this again
+                }).catch(e => console.warn("Audio unlock pending..."));
+            }
+        }
+    }, { once: true }); // Automatically destroys the listener after the first tap
            
     const triggerSubmit = (e) => { 
         if (e.key === 'Enter') document.getElementById('submit-btn').click(); 
