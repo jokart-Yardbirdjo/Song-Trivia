@@ -48,15 +48,18 @@ export const cartridgeRegistry = [
     { id: 'who_said_it', module: QuoteTrivia,  icon: '💬' } // <--- FIXED THIS LINE
 ];
 
-// ── AUTO-HYDRATOR: Never touch state.js again ──
-// Dynamically builds the stats tracking nodes for any newly registered games
+// ── ADVANCED AUTO-HYDRATOR ──
 cartridgeRegistry.forEach(game => {
     if (!state.userStats[game.id]) {
-        state.userStats[game.id] = { gamesPlayed: 0, highScore: 0 };
+        // Look at the cartridge's manifest. If it asks for custom stats, give it to them.
+        // Otherwise, give it the standard default package.
+        const customStats = game.module.manifest.initialStats;
+        
+        state.userStats[game.id] = customStats ? { ...customStats } : { gamesPlayed: 0, highScore: 0 };
     }
 });
-// Save the newly hydrated stats back to the device
 localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
+// - end auto hydrator - 
 
 // Default the system to Song Trivia on load to prevent null references
 window.activeCartridge = SongTrivia;
