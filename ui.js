@@ -75,6 +75,43 @@ export function buildSetupScreen(manifest) {
     state.gameState.level = manifest.levels[0].id;
 }
 
+/**
+ * buildCartridgeMenu(registry)
+ * ─────────────────────────────
+ * Dynamically generates the horizontal Console menu by reading the 
+ * manifests exported by each Cartridge module. 
+ */
+export function buildCartridgeMenu(registry) {
+    const carousel = document.getElementById('cartridge-carousel');
+    if (!carousel) return;
+
+    carousel.innerHTML = '';
+
+    registry.forEach(cart => {
+        // Read the public metadata from the cartridge
+        const manifest = cart.module.manifest;
+        
+        const card = document.createElement('div');
+        card.className = 'cartridge-card';
+        // Calls the global platform router when tapped
+        card.onclick = () => { window.selectGame(manifest.id); }; 
+
+        card.innerHTML = `
+            <div style="font-size:3.5rem; margin-bottom:15px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.1));">
+                ${cart.icon}
+            </div>
+            <div style="font-size:1.5rem; color:var(--primary); font-weight:900; letter-spacing:1px;">
+                ${manifest.title}
+            </div>
+            <div style="font-size:0.95rem; color:var(--text-muted); margin-top:12px; line-height:1.4;">
+                ${manifest.subtitle || 'Insert cartridge to play.'}
+            </div>
+        `;
+        
+        carousel.appendChild(card);
+    });
+}
+
 
 // ==========================================
 // PHASE 3: DELEGATION STATE SETTERS
@@ -273,3 +310,6 @@ export function renderPlaylist(platform) {
     });
     document.getElementById('playlist-list').innerHTML = playlistHTML;
 }
+
+
+
