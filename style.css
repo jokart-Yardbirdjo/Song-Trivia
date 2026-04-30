@@ -1217,3 +1217,46 @@ body.client-mode #main-title        {
         margin-bottom: 15px;
     }
 }
+
+/*
+ * ==========================================================================
+ * CARTRIDGE LOADER: HORIZONTAL CAROUSEL
+ * ==========================================================================
+ */
+.cartridge-carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;   /* Native hardware-accelerated snapping */
+    gap: 20px;
+    padding: 20px 5%;                /* Side padding so cards don't hit the edge */
+    margin: 20px -20px;              /* Bleed edges on mobile */
+    
+    /* Hide ugly scrollbars for a native app feel */
+    -ms-overflow-style: none;  
+    scrollbar-width: none;  
+}
+
+.cartridge-carousel::-webkit-scrollbar {
+    display: none; 
+}
+
+.cartridge-card {
+    scroll-snap-align: center;       /* Magnetically snap cards to the center */
+    flex: 0 0 75%;                   /* Cards take up 75% of screen width */
+    max-width: 320px;
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Tactile physical press animation */
+.cartridge-card:active {
+    transform: translateY(6px) scale(0.96);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+    border-color: var(--primary);
+}
