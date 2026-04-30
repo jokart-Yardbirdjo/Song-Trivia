@@ -830,71 +830,7 @@
 
             <!-- Card grid — each card is one "cartridge" slot.
                  Add new cards here as new games are built. -->
-            <div class="card-group">
-
-                <!-- 🎵 Song Trivia — the flagship game -->
-                <div class="select-card game-card"
-                     onclick="selectGame('song_trivia')"
-                     style="text-align: center; padding: 18px; margin-bottom: 12px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 8px;">🎵</div>
-                    <div class="card-title" style="font-size: 1.25rem;">Song Trivia</div>
-                    <div class="card-desc" style="font-size: 0.9rem;">
-                        The original Yardbird masterpiece. Guess the artist, song, or movie.
-                    </div>
-                </div>
-
-                <!-- 🗳️ The Consensus — social party game -->
-                <div class="select-card game-card"
-                     onclick="selectGame('consensus')"
-                     style="text-align: center; padding: 18px; margin-bottom: 12px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 8px;">🗳️</div>
-                    <div class="card-title" style="font-size: 1.25rem;">The Consensus</div>
-                    <div class="card-desc" style="font-size: 0.9rem;">
-                        A social party game of voting, debating, and guessing the room.
-                    </div>
-                </div>
-
-                <!-- 🗣️ Who Said It? — quote identification -->
-                <div class="select-card game-card"
-                     onclick="selectGame('who_said_it')"
-                     style="text-align: center; padding: 18px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 8px;">🗣️</div>
-                    <div class="card-title" style="font-size: 1.25rem;">Who Said It?</div>
-                    <div class="card-desc" style="font-size: 0.9rem;">
-                        Pop culture, iconic quotes, and famous movie lines.
-                    </div>
-                </div>
-
-              <!-- 👁️ The Reveal - an image blur game -->
-              <div class="select-card game-card"
-                     onclick="selectGame('the_reveal')"
-                     style="text-align: center; padding: 18px; margin-top: 12px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 8px;">👁️</div>
-                    <div class="card-title" style="font-size: 1.25rem;">The Reveal</div>
-                    <div class="card-desc" style="font-size: 0.9rem;">
-                        Visual pattern recognition. Blur the lines.
-                    </div>
-                </div>
-
-                <!-- ➕ Fast Math — speed arithmetic -->
-                <div class="select-card game-card"
-                     onclick="selectGame('fast_math')"
-                     style="text-align: center; padding: 18px;">
-                    <div style="font-size: 2.5rem; margin-bottom: 8px;">➕</div>
-                    <div class="card-title" style="font-size: 1.25rem;">Fast Math</div>
-                    <div class="card-desc" style="font-size: 0.9rem;">
-                        Quick-fire arithmetic battles. Speed is everything!
-                    </div>
-                </div>
-
-                <!--
-                  ┌─────────────────────────────────────────────┐
-                  │  FUTURE CARTRIDGE SLOT                      │
-                  │  Copy the block above, set onclick gameId,  │
-                  │  pick an emoji, write a one-line desc.       │
-                  └─────────────────────────────────────────────┘
-                -->
-
+            <div id="cartridge-carousel" class="cartridge-carousel">
             </div>
         </div><!-- /#main-menu-screen -->
 
