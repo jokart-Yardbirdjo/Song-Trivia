@@ -62,6 +62,22 @@ cartridgeRegistry.forEach(game => {
 localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 // - end auto hydrator - 
 
+// Hydrate AI Settings Modal on boot
+const savedProvider = localStorage.getItem('yardbird_ai_provider') || 'openai';
+const savedKey = localStorage.getItem('yardbird_ai_key');
+
+if (savedKey) {
+    document.getElementById('global-ai-key').value = savedKey;
+    
+    // Find the right pill and simulate a click to set the UI state
+    const pills = document.getElementById('ai-provider-pills').children;
+    for (let pill of pills) {
+        if (pill.innerText.toLowerCase() === savedProvider) {
+            window.selectAIProvider(savedProvider, pill);
+        }
+    }
+}
+
 // Default the system to Song Trivia on load to prevent null references
 window.activeCartridge = SongTrivia;
 
