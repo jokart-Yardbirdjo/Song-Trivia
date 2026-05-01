@@ -242,32 +242,43 @@ document.addEventListener("DOMContentLoaded", () => {
     let audioUnlocked = false;
     
     const unlockAudio = () => {
-        if (audioUnlocked || !bgm) return;
-        
-        // 1. Force volume to 100% (in case a previous test got stuck at 0)
-        bgm.volume = 1; 
-        
-        // 2. Play and instantly pause. 
-        // We catch and ignore the browser's "interruption" warning.
-        // This permanently flags the audio element as "user approved" in the background.
-        const unlockPromise = bgm.play();
-        if (unlockPromise !== undefined) {
-            unlockPromise.catch(() => {}); // Swallow the interruption error silently
+    if (audioUnlocked) return;
+    
+    /**
+     * Helper function to silently unlock an individual HTMLAudioElement.
+     * By triggering a play/pause sequence on the first physical touch,
+     * Mobile Chrome flags the element as "user approved" for future async play().
+     */
+    const unlockElement = (el) => {
+        if (!el) return;
+        el.volume = 0; // Mute for the silent unlock
+        const promise = el.play();
+        if (promise !== undefined) {
+            promise.catch(() => {}); // Swallow the interruption error silently
         }
-        bgm.pause();
-        bgm.currentTime = 0;
-        
-        audioUnlocked = true;
-        console.log("✅ Audio context fully unlocked!");
-        
-        // 3. Clean up so this only runs on the very first tap of the session
-        document.body.removeEventListener('click', unlockAudio);
-        document.body.removeEventListener('touchstart', unlockAudio);
+        el.pause();
+        el.currentTime = 0;
+        el.volume = 1; // Restore volume
     };
 
-    // Attach to the first physical touch anywhere on the screen
-    document.body.addEventListener('click', unlockAudio);
-    document.body.addEventListener('touchstart', unlockAudio);
+    // Unlock the entire Yardbird Audio Suite on the very first screen tap
+    unlockElement(bgm);
+    unlockElement(audio);      // <--- This fixes your Custom Game hang!
+    unlockElement(sfxTick);
+    unlockElement(sfxCheer);
+    unlockElement(sfxBuzzer);
+    
+    audioUnlocked = true;
+    console.log("✅ Audio context fully unlocked!");
+    
+    // Clean up so this only runs on the very first tap of the session
+    document.body.removeEventListener('click', unlockAudio);
+    document.body.removeEventListener('touchstart', unlockAudio);
+};
+
+// Attach to the first physical touch anywhere on the screen
+document.body.addEventListener('click', unlockAudio);
+document.body.addEventListener('touchstart', unlockAudio);
            
     const triggerSubmit = (e) => { 
         if (e.key === 'Enter') document.getElementById('submit-btn').click(); 
