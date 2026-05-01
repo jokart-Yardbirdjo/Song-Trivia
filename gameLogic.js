@@ -788,7 +788,30 @@ function nextTrack() {
 
     let playPromise = audio.play();
     if (playPromise !== undefined) {
-        playPromise.then(_ => { startRoundClock(); }).catch(error => { startRoundClock(); });
+    playPromise
+        .then(() => {
+            // Success! The browser allowed it.
+            startRoundClock();
+        })
+        .catch(err => {
+            // Mobile Chrome blocked it due to the async fetch delay.
+            console.warn("🔇 Autoplay blocked, recovering UI...", err);
+            
+            // Cleanly morph the timer text into a clickable prompt
+            const timerEl = document.getElementById('timer');
+            timerEl.innerHTML = `<span style="cursor:pointer; color:var(--primary); font-size:1.5rem; animation: pulse 1s infinite alternate;">▶️ TAP TO PLAY</span>`;
+            
+            // Attach a pristine, one-time event listener to satisfy Chrome
+            timerEl.onclick = () => {
+                timerEl.onclick = null; // Clean up listener
+                timerEl.innerHTML = 'Load...'; // Reset UI
+                
+                // Chrome is now happy because this play() is directly tied to this exact click
+                audio.play()
+                    .then(() => startRoundClock())
+                    .catch(() => startRoundClock()); // Fallback to ensure game never hangs
+            };
+        });
     } else {
         startRoundClock();
     }
