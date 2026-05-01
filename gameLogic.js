@@ -117,8 +117,16 @@ export const manifest = {
     initialStats: { 
         gamesPlayed: 0, 
         highScore: 0, 
-        trophies: [], 
-        lastPlayedDate: null 
+        totalGuesses: 0,
+        correctGuesses: 0,
+        hsText: 0,
+        hsMC: 0,
+        sniperHits: 0,
+        currentStreak: 0,
+        playedDailyToday: false,
+        lastPlayedDate: null, 
+        modesPlayed: { genre: false, artist: false, movie: false },
+        trophies: { perf: false, mara: false, snip: false, streak: false, expl: false }
     }
 };
 
@@ -682,9 +690,19 @@ function launchGameUI() {
     if(state.isDailyMode) { document.getElementById('main-title').innerText = "🌍 TODAY THREE CHALLENGE"; }
     
     if (!state.isDailyMode) {
+        // 🛡️ Data Guard: Protect against missing nested objects in legacy localStorage
+        if (!state.userStats.song_trivia.modesPlayed) {
+            state.userStats.song_trivia.modesPlayed = { genre: false, artist: false, movie: false };
+        }
+        if (!state.userStats.song_trivia.trophies) {
+            state.userStats.song_trivia.trophies = { perf: false, mara: false, snip: false, streak: false, expl: false };
+        }
+
+        // Now it's perfectly safe to assign these values
         if (state.gameState.mode === 'genre') state.userStats.song_trivia.modesPlayed.genre = true;
         if (state.gameState.mode === 'artist') state.userStats.song_trivia.modesPlayed.artist = true;
         if (state.gameState.mode === 'movie') state.userStats.song_trivia.modesPlayed.movie = true;
+        
         if (state.userStats.song_trivia.modesPlayed.genre && state.userStats.song_trivia.modesPlayed.artist && state.userStats.song_trivia.modesPlayed.movie) {
             state.userStats.song_trivia.trophies.expl = true;
         }
