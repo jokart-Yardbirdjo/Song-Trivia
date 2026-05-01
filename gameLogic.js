@@ -814,11 +814,9 @@ if (playPromise !== undefined) {
                     .catch(() => startRoundClock()); // Failsafe
             };
         });
-} else {
-    startRoundClock();
-}
-
-// -----------------------------------------------------------------------
+    } else {
+        startRoundClock();
+    }
 }
 
 function startRoundClock() {
