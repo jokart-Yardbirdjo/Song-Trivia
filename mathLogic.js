@@ -1,6 +1,7 @@
 // mathLogic.js
 import { db } from './firebase.js';
-import { state, sfxTick, sfxCheer, sfxBuzzer, colors, bgm } from './state.js';
+//import { state, sfxTick, sfxCheer, sfxBuzzer, colors, bgm } from './state.js';
+import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
 
 export const manifest = {
     id: "fast_math",
@@ -394,7 +395,7 @@ export function nextRound() {
     const timerFill = document.getElementById('timer-bar-fill');
 
     // NEW: Start the music
-    bgm.play().catch(e => console.warn("BGM blocked by browser policy until interaction."));
+    // bgm.play().catch(e => console.warn("BGM blocked by browser policy until interaction."));
 
     state.timerId = setInterval(() => {
         state.timeLeft--;
@@ -450,8 +451,8 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
     clearInterval(state.timerId);
 
     // NEW: Stop the music and rewind
-    bgm.pause();
-    bgm.currentTime = 0;
+    //bgm.pause();
+    //bgm.currentTime = 0;
 
     document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
 
@@ -532,8 +533,8 @@ export async function evaluateMultiplayerRound(players) {
     if (state.timerId) clearInterval(state.timerId);
 
     // NEW: Stop the music and rewind
-    bgm.pause();
-    bgm.currentTime = 0;
+    //bgm.pause();
+    //bgm.currentTime = 0;
 
     const results = [];
     const isDouble = !isSuddenDeath() && state.doubleRounds.includes(state.curIdx);
