@@ -16,7 +16,7 @@
 // PHASE 1: IMPORTS & CARTRIDGES
 // ==========================================
 // Consolidate the state and bgm import here!
-import { state, bgm } from './state.js';
+//import { state, bgm } from './state.js';
 
 import { 
     showModal, hideModal, setMode, setSub, setPill, setLevel, 
@@ -262,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // Unlock the entire Yardbird Audio Suite on the very first screen tap
-    unlockElement(bgm);
+    //unlockElement(bgm);
     unlockElement(audio);      // <--- This fixes your Custom Game hang!
     unlockElement(sfxTick);
     unlockElement(sfxCheer);
