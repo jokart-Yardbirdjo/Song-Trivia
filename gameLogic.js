@@ -4,77 +4,78 @@
  * ==============================================================================
  *
  * WHAT THIS GAME IS:
- *   Yardbird's original and flagship cartridge. A 30-second audio trivia battle
- *   powered by the iTunes Search API. A song clip plays — players must stop it
- *   and type the artist name and/or song title from memory. A lifeline system
- *   auto-triggers multiple-choice buttons at the 10-second mark, rewarding
- *   quick ears and punishing those who wait.
+ * Yardbird's original and flagship cartridge. A 30-second audio trivia battle
+ * powered by the iTunes Search API. A song clip plays — players must stop it
+ * and type the artist name and/or song title from memory. A lifeline system
+ * auto-triggers multiple-choice buttons at the 10-second mark, rewarding
+ * quick ears and punishing those who wait.
  *
  * MODES:
- *   · Genre (Guess Artist + Song) — iTunes search by era, genre, or decade.
- *     Scoring: both correct = 2× points; either correct = base points.
- *   · Artist (Guess the Song)     — Deep dive into one artist's catalog.
- *     Scoring: correct = 2× points.
- *   · Movie (Guess the Film)      — Original soundtrack identification.
- *     Scoring: correct = 2× points.
+ * · Genre (Guess Artist + Song) — iTunes search by era, genre, or decade.
+ * Scoring: both correct = 2× points; either correct = base points.
+ * · Artist (Guess the Song)     — Deep dive into one artist's catalog.
+ * Scoring: correct = 2× points.
+ * · Movie (Guess the Film)      — Original soundtrack identification.
+ * Scoring: correct = 2× points.
  *
  * DIFFICULTY LEVELS:
- *   · Easy   — 30s timer, top-charting hits only, 1 song per artist.
- *   · Medium — 30s timer, full back-catalog including B-sides.
- *   · Hard   — 10s strict cutoff, no automatic lifeline, pure recall.
+ * · Easy   — 30s timer, top-charting hits only, 1 song per artist.
+ * · Medium — 30s timer, full back-catalog including B-sides.
+ * · Hard   — 10s strict cutoff, no automatic lifeline, pure recall.
  *
  * SPECIAL FEATURES:
- *   · Today Three: a seeded daily challenge — all players globally hear the
- *     exact same 3 songs, sourced from db_daily.json + iTunes.
- *   · Lifeline: at 10s remaining, MC buttons appear. Sacrifices typing
- *     bonus but gives a safety net. forceLifeline() lets players call it
- *     early at a scoring cost.
- *   · Fuzzy Grading: Levenshtein distance + phonetic normalization means
- *     typos and minor spelling errors are accepted.
- *   · Double Rounds: randomly assigned, one per 5-round block (2× score).
- *   · Streak Bonus: +50 pts every 3rd consecutive correct answer (typing only).
- *   · Playlist reveal: finale screen shows links to Apple Music, Spotify, YouTube.
- *   · Confetti cannon on game-over.
- *   · Apple Music playlist URL import support.
+ * · Today Three: a seeded daily challenge — all players globally hear the
+ * exact same 3 songs, sourced from db_daily.json + iTunes.
+ * · Lifeline: at 10s remaining, MC buttons appear. Sacrifices typing
+ * bonus but gives a safety net. forceLifeline() lets players call it
+ * early at a scoring cost.
+ * · Fuzzy Grading: Levenshtein distance + phonetic normalization means
+ * typos and minor spelling errors are accepted.
+ * · Double Rounds: randomly assigned, one per 5-round block (2× score).
+ * · Streak Bonus: +50 pts every 3rd consecutive correct answer (typing only).
+ * · Playlist reveal: finale screen shows links to Apple Music, Spotify, YouTube.
+ * · Confetti cannon on game-over.
+ * · Apple Music playlist URL import support.
  *
  * MULTIPLAYER:
- *   Host (TV) runs the full game loop. Phones submit typed or MC guesses
- *   via Firebase. Host evaluates all players simultaneously on each round.
- *   Grace period: after 30s, multiplayer hosts give 30 extra seconds for
- *   late submissions before evaluating.
+ * Host (TV) runs the full game loop. Phones submit typed or MC guesses
+ * via Firebase. Host evaluates all players simultaneously on each round.
+ * Grace period: after 30s, multiplayer hosts give 30 extra seconds for
+ * late submissions before evaluating.
  *
  * CARTRIDGE CONTRACT (required by app.js validateCartridge):
- *   ✅ manifest                   — game metadata & setup config
- *   ✅ startGame()                — entry point, triggers iTunes fetch
- *   ✅ handleStop()               — pauses audio, shows typing fields
- *   ✅ forceLifeline()            — early MC trigger (costs max score)
- *   ✅ evaluateGuess()            — solo scoring logic (typed + MC)
- *   ✅ evaluateMultiplayerRound() — multiplayer scoring (all players at once)
- *   ✅ submitClientMCGuess()      — phone MC submission to Firebase
- *   ✅ startDailyChallenge()      — loads Today Three from db_daily.json
- *   ✅ resetStats()               — clears localStorage for this cartridge
- *   ✅ shareChallenge()           — emoji grid + URL share sheet
- *   ✅ renderStatsUI()            — injects stats HTML into stats modal
+ * ✅ manifest                 — game metadata & setup config
+ * ✅ startGame()              — entry point, triggers iTunes fetch
+ * ✅ handleStop()             — pauses audio, shows typing fields
+ * ✅ forceLifeline()          — early MC trigger (costs max score)
+ * ✅ evaluateGuess()          — solo scoring logic (typed + MC)
+ * ✅ evaluateMultiplayerRound() — multiplayer scoring (all players at once)
+ * ✅ submitClientMCGuess()      — phone MC submission to Firebase
+ * ✅ startDailyChallenge()      — loads Today Three from db_daily.json
+ * ✅ resetStats()               — clears localStorage for this cartridge
+ * ✅ shareChallenge()           — emoji grid + URL share sheet
+ * ✅ renderStatsUI()            — injects stats HTML into stats modal
  *
  * FILE STRUCTURE (section map):
- *   SECTION 1  — Imports & Module-Level State
- *   SECTION 2  — Manifest (Cartridge Contract)
- *   SECTION 3  — Stats Persistence
- *   SECTION 4  — Stats UI & Trophy System
- *   SECTION 5  — Daily Challenge (Today Three)
- *   SECTION 6  — iTunes Fetch Logic (executeFetchLogic)
- *   SECTION 7  — Game UI Launch (launchGameUI)
- *   SECTION 8  — Round Loop (nextTrack)
- *   SECTION 9  — Round Timer (_startTimer)
- *   SECTION 10 — Lifeline System (forceLifeline / triggerLifeline / handleStop)
- *   SECTION 11 — Fuzzy Answer Grading (levenshtein / isCloseEnough)
- *   SECTION 12 — Score Helpers (getNormalizedScore / updateLeaderboard)
- *   SECTION 13 — Guess Evaluation: Solo (evaluateGuess)
- *   SECTION 14 — Guess Evaluation: Multiplayer (evaluateMultiplayerRound)
- *   SECTION 15 — Phone Client (submitClientMCGuess)
- *   SECTION 16 — End Game (endGameSequence / shootConfetti)
- *   SECTION 17 — Share Challenge
- *   SECTION 18 — Apple Music Playlist Import
+ * SECTION 1  — Imports & Module-Level State
+ * SECTION 2  — Manifest (Cartridge Contract)
+ * SECTION 3  — Stats Persistence
+ * SECTION 4  — Stats UI & Trophy System
+ * SECTION 5  — Daily Challenge (Today Three)
+ * SECTION 6  — iTunes Fetch Logic (executeFetchLogic)
+ * SECTION 7  — Game UI Launch (launchGameUI)
+ * SECTION 8  — Round Loop (nextTrack)
+ * SECTION 9  — Round Timer (_startTimer)
+ * SECTION 10 — Lifeline System (forceLifeline / triggerLifeline / handleStop)
+ * SECTION 11 — Fuzzy Answer Grading (levenshtein / isCloseEnough)
+ * SECTION 12 — Score Helpers (getNormalizedScore / updateLeaderboard)
+ * SECTION 13 — Guess Evaluation: Solo (evaluateGuess)
+ * SECTION 14 — Guess Evaluation: Multiplayer (evaluateMultiplayerRound)
+ * SECTION 15 — Phone Client (submitClientMCGuess)
+ * SECTION 16 — End Game (endGameSequence / shootConfetti)
+ * SECTION 17 — Share Challenge
+ * SECTION 18 — Apple Music Playlist Import
+ * SECTION 19 — UI & Platform Bridges (Mode & Sub Select)
  * ==============================================================================
  */
 
@@ -96,21 +97,6 @@ import { populateStats } from './ui.js';
 // SECTION 2 — MANIFEST (CARTRIDGE CONTRACT)
 // ==============================================================================
 
-/**
- * manifest  {Object}
- * ───────────────────
- * Song Trivia is the most complex cartridge — its manifest reflects that.
- *
- * NOTABLE FIELDS:
- *   hasDaily: true        — Enables the "Today Three" daily button in the setup screen.
- *   clientUI: "typing-and-mc" — Tells the phone to render BOTH a text-input area
- *                               AND MC buttons (phones start in typing mode,
- *                               switch to MC when the lifeline fires).
- *   initialStats          — Song Trivia needs richer stat fields than the platform
- *                           default (gamesPlayed + highScore). The advanced
- *                           auto-hydrator in app.js reads this field and seeds
- *                           localStorage with this exact shape on first run.
- */
 export const manifest = {
     id: "song_trivia",
     title: "SONG TRIVIA",
@@ -153,31 +139,10 @@ export const manifest = {
 // SECTION 3 — STATS PERSISTENCE
 // ==============================================================================
 
-/**
- * saveStats()
- * ────────────
- * PRIVATE — serializes state.userStats to localStorage.
- * Called at the end of every game and whenever a stat changes mid-session.
- *
- * WHY a dedicated helper?
- *   state.userStats is a shared object across ALL cartridges. Centralizing
- *   the write here ensures we always serialize the full object — not just
- *   the Song Trivia slice — so no other cartridge's data is lost.
- */
 function saveStats() {
     localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
 }
 
-/**
- * resetStats()
- * ─────────────
- * EXPORTED — wired to the "Reset Stats" button in the stats modal.
- * Nukes all Song Trivia stats and trophies after user confirmation.
- *
- * NOTE: resetStats resets the full song_trivia object back to a safe shape.
- * If any new stat fields are added to the manifest.initialStats later,
- * they must also be added here.
- */
 export function resetStats() {
     if (confirm("Are you sure you want to reset all lifetime stats and trophies? This cannot be undone.")) {
         state.userStats.song_trivia = {
@@ -198,24 +163,6 @@ export function resetStats() {
 // SECTION 4 — STATS UI & TROPHY SYSTEM
 // ==============================================================================
 
-/**
- * renderStatsUI()
- * ────────────────
- * EXPORTED — called by ui.js when the stats modal opens and Song Trivia is active.
- * Builds the full stats + trophy locker HTML and injects it into #stats-content.
- *
- * TROPHY CONDITIONS (checked on-write in endGameSequence):
- *   perf  — Score ≥ 900 on any single game
- *   mara  — Play a 20+ round session
- *   snip  — Accumulate 10 "sniper hits" (answered before 3s)
- *   streak— Maintain a 5-day daily login streak
- *   expl  — Play all 3 game modes at least once
- *
- * WHY populateStats?
- *   populateStats() is a ui.js helper that handles the sub-tabs inside the
- *   stats modal (game stats vs. platform stats). renderStatsUI only builds
- *   the inner HTML content.
- */
 export function renderStatsUI() {
     const st = state.userStats.song_trivia || {};
     const tr = st.trophies || {};
@@ -258,28 +205,11 @@ export function renderStatsUI() {
 // SECTION 5 — DAILY CHALLENGE (TODAY THREE)
 // ==============================================================================
 
-/**
- * startDailyChallenge()
- * ──────────────────────
- * EXPORTED — triggered by the "Play Today Three" button on the setup screen.
- * Loads the global daily challenge: 3 specific songs that every player in
- * the world hears on the same calendar day.
- *
- * DATA SOURCE: db_daily.json
- *   A curated vault of { artist, song } target pairs, indexed by day-of-year.
- *   Today's entry = vault[dayOfYear % vault.length].
- *
- * FETCH STRATEGY:
- *   For each target pair, we query iTunes for up to 15 results and apply
- *   a strict blocklist (covers, karaoke, instrumentals, remixes) before
- *   picking the first clean match. Falls back to pop/rock hits if all
- *   targets fail (guardrail only — should not happen in production).
- *
- * LOCK-OUT:
- *   Once the player completes the daily, state.userStats.song_trivia.playedDailyToday
- *   is set to true and the button is greyed out by ui.js setupDailyButton().
- */
 export async function startDailyChallenge() {
+    // 🎵 PRIMER: Permanently unlock audio for this session BEFORE the network fetch
+    audio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    audio.play().then(() => audio.pause()).catch(() => {});
+
     state.isDailyMode  = true;
     state.numPlayers   = 1;
     state.roundsPerPlayer = 3;
@@ -346,7 +276,6 @@ export async function startDailyChallenge() {
 
     } catch (err) {
         console.error(err);
-        // ── Graceful fallback: play generic pop/rock hits ──
         console.warn("Daily fetch failed — playing fallback...");
         const fallbackRes  = await fetch(`https://itunes.apple.com/search?term=pop+rock+hits&limit=20&entity=song`);
         const fallbackData = await fallbackRes.json();
@@ -365,23 +294,11 @@ export async function startDailyChallenge() {
 // SECTION 6 — ITUNES FETCH LOGIC (executeFetchLogic)
 // ==============================================================================
 
-/**
- * startGame()
- * ────────────
- * EXPORTED — platform entry point. Resets state, sets time limit, and
- * triggers executeFetchLogic() to build the song pool from iTunes.
- *
- * WHY separate startGame and executeFetchLogic?
- *   startDailyChallenge() bypasses executeFetchLogic entirely — it fetches
- *   from db_daily.json instead. Keeping fetch logic separate lets both paths
- *   share launchGameUI() without code duplication.
- */
-
-// 🎵 PRIMER: Permanently unlock audio for this session BEFORE the heavy fetching
+export function startGame() {
+    // 🎵 PRIMER: Permanently unlock audio for this session BEFORE the heavy fetching
     audio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
     audio.play().then(() => audio.pause()).catch(() => {});
-    
-export function startGame() {
+
     // ── Garbage collection: wipe state from other cartridges ──
     state.curIdx       = 0;
     state.songs        = [];
@@ -391,7 +308,12 @@ export function startGame() {
     state.isDailyMode     = false;
     state.numPlayers      = state.isMultiplayer ? state.numPlayers : 1;
     state.timeLimit       = state.gameState.level === 'hard' ? 10 : 30;
-    state.roundsPerPlayer = state.gameState.rounds;
+    
+    // 🛠️ FALLBACK FIX: Force strict integer parsing to prevent empty-string math failures
+    state.roundsPerPlayer = parseInt(state.gameState.rounds, 10);
+    if (isNaN(state.roundsPerPlayer) || state.roundsPerPlayer <= 0) {
+        state.roundsPerPlayer = 5; 
+    }
     state.maxRounds       = state.roundsPerPlayer;
 
     document.getElementById('start-btn-top').style.display = 'none';
@@ -401,24 +323,6 @@ export function startGame() {
     executeFetchLogic();
 }
 
-/**
- * getMovieName(track)
- * ────────────────────
- * PRIVATE — extracts a clean movie title from an iTunes track object.
- *
- * PARSING PRIORITY:
- *   1. "From [Movie Name])" suffix in the track name (most reliable).
- *   2. collectionName with all standard soundtrack suffixes stripped.
- *   3. Fallback: "Unknown Movie".
- *
- * WHY strip suffixes?
- *   iTunes collections often include "(Original Motion Picture Soundtrack)"
- *   which would make the MC options unreadable and too obvious. We clean it
- *   so the visible string is just the film title.
- *
- * @param  {Object} track — An iTunes track result object
- * @returns {string}      — Clean movie title
- */
 function getMovieName(track) {
     const fromMatch = track.trackName.match(/\bFrom\s+["']?([^"'\)]+)["']?\)/i);
     if (fromMatch?.[1]) return fromMatch[1].trim();
@@ -434,30 +338,6 @@ function getMovieName(track) {
     return col || "Unknown Movie";
 }
 
-/**
- * executeFetchLogic()
- * ────────────────────
- * PRIVATE — async iTunes fetch and pool-building function.
- * Triggered by startGame(). NOT called by startDailyChallenge().
- *
- * FETCH STRATEGY:
- *   · Genre mode:   searches by era/decade keywords. Filters by release year
- *     window (±8 years). Easy mode: max 1 song per artist for variety.
- *   · Artist mode:  loops through the artist list, fetching a proportional
- *     number of tracks from each. Filters out singles and EP-only releases.
- *   · Movie mode:   searches by movie title lists (Disney, Bollywood, etc.)
- *     and deduplicates by film name so no movie appears twice in a session.
- *   · Playlist URL: if the user pastes an Apple Music URL, extractPlaylistData()
- *     scrapes track names via a CORS proxy and matches them on iTunes.
- *
- * DOUBLE ROUND GENERATION:
- *   After the pool is built, one round per 5-round block is randomly selected
- *   as a "double round" (scoring ×2). Stored in state.doubleRounds.
- *
- * ERROR HANDLING:
- *   All errors surface a friendly message in #feedback-setup and reset the
- *   start button so the player can try again without a page reload.
- */
 async function executeFetchLogic() {
     const sub = state.gameState.sub;
     let pool  = [];
@@ -495,7 +375,6 @@ async function executeFetchLogic() {
             minYear       = genreMeta[sub].minYear;
             maxYear       = genreMeta[sub].maxYear;
         } else if (subLists[sub] && state.gameState.mode === 'movie') {
-            // Movie lists: each title becomes a separate search
             const hitLimit = state.maxRounds * 4;
             for (const title of subLists[sub]) {
                 const fetchPromise   = fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(title + ' soundtrack')}&limit=10&entity=song`);
@@ -512,7 +391,6 @@ async function executeFetchLogic() {
                 pool = pool.concat(filtered);
             }
         } else if (subLists[sub] && state.gameState.mode === 'artist') {
-            // Artist lists: search each artist name, cap per-artist track count
             const hitLimit  = state.maxRounds * 4;
             const artists   = subLists[sub];
             for (const artist of artists) {
@@ -532,17 +410,14 @@ async function executeFetchLogic() {
                 pool = pool.concat(filtered);
             }
         } else if (sub === 'playlist') {
-            // Playlist URL import path — extractPlaylistData handles scraping
             const url   = document.getElementById('custom-input').value.trim();
             const songs = await extractPlaylistData(url);
             pool = songs;
         } else {
-            // Generic text search (artist name typed by user, or genre keyword)
             apiSearchTerm = document.getElementById('custom-input')?.value?.trim() || sub || 'pop hits';
         }
 
         if (apiSearchTerm) {
-            // Add a random vowel wildcard to broaden iTunes results
             const vowels = ['a', 'e', 'i', 'o', 'u'];
             apiSearchTerm += ' ' + vowels[Math.floor(Math.random() * vowels.length)];
 
@@ -586,7 +461,7 @@ async function executeFetchLogic() {
         if (state.songs.length < 3) throw new Error("Not enough tracks found! Try broadening your search.");
         if (state.songs.length < state.maxRounds) state.maxRounds = state.songs.length;
 
-        // ── Generate double-round indices (one per 5-round block) ──
+        // ── Generate double-round indices ──
         state.doubleRounds = [];
         for (let i = 0; i < state.maxRounds; i += 5) {
             const min = i === 0 ? 2 : i;
@@ -615,22 +490,6 @@ async function executeFetchLogic() {
 // SECTION 7 — GAME UI LAUNCH (launchGameUI)
 // ==============================================================================
 
-/**
- * launchGameUI()
- * ───────────────
- * PRIVATE — called after a successful fetch to transition setup → play screen
- * and configure field visibility for the current mode.
- *
- * FIELD VISIBILITY RULES:
- *   · genre  → show artist field + song field; hide movie field
- *   · artist → hide artist field; show song field; hide movie field
- *   · movie  → hide artist field; hide song field; show movie field
- *
- * TROPHY — Explorer:
- *   Checks if the player has now played all 3 modes across their lifetime
- *   and sets the trophy flag if so. Checked here (not endGameSequence) so
- *   it triggers even mid-session when a player switches modes.
- */
 function launchGameUI() {
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('play-screen').classList.remove('hidden');
@@ -644,7 +503,6 @@ function launchGameUI() {
 
     if (state.isDailyMode) document.getElementById('main-title').innerText = "🌍 TODAY THREE CHALLENGE";
 
-    // ── Mode-play trophy tracking ──
     if (!state.isDailyMode) {
         const st = state.userStats.song_trivia;
         if (state.gameState.mode === 'genre')  st.modesPlayed.genre  = true;
@@ -663,30 +521,6 @@ function launchGameUI() {
 // SECTION 8 — ROUND LOOP (nextTrack)
 // ==============================================================================
 
-/**
- * nextTrack()
- * ────────────
- * PRIVATE — advances the game to the next song, or ends the game when all
- * rounds are exhausted. The core game-loop entry point.
- *
- * FLOW:
- *   1. End-of-game check → endGameSequence().
- *   2. Clear both timers (song timer + guess timer).
- *   3. Pre-build the 4 MC options from the global pool for this round.
- *      Wrong options come from the same pool so they are plausible alternatives.
- *   4. Set player tag and round header.
- *   5. Play the iTunes preview clip via the shared audio element.
- *   6. Start the countdown via _startTimer().
- *
- * MC OPTION BUILDING:
- *   We pre-build MC options here (not at lifeline time) so they're ready
- *   the instant the lifeline fires at 10s. Building them lazily would
- *   introduce a visible delay at an already tense moment.
- *
- * DOUBLE ROUND:
- *   If this round is in state.doubleRounds, the round header gets a star badge.
- *   The actual ×2 multiplier is applied in evaluateGuess / evaluateMultiplayerRound.
- */
 function nextTrack() {
     if (state.curIdx >= state.maxRounds) { endGameSequence(); return; }
 
@@ -712,7 +546,6 @@ function nextTrack() {
         ...wrongPool.slice(0, 3).map(str => ({ str, correct: false }))
     ].sort(() => 0.5 - Math.random());
 
-    // ── Round header badge ──
     const tag  = document.getElementById('active-player');
     const color = colors[pIdx % colors.length];
     tag.innerText     = isDouble
@@ -721,14 +554,12 @@ function nextTrack() {
     tag.style.color       = isDouble ? '#f39c12' : color;
     tag.style.borderColor = isDouble ? '#f39c12' : color;
 
-    // ── Initialize per-player match history array on round 0 ──
     if (state.curIdx === 0) {
         state.rawScores   = new Array(state.numPlayers).fill(0);
         state.streaks     = new Array(state.numPlayers).fill(0);
         state.matchHistory= new Array(state.numPlayers).fill(null).map(() => []);
     }
 
-    // ── Clear previous feedback and ensure action buttons are visible ──
     document.getElementById('feedback').innerHTML = '';
     document.getElementById('btn-container').classList.remove('hidden');
     document.getElementById('mc-fields').classList.add('hidden');
@@ -736,7 +567,6 @@ function nextTrack() {
     document.getElementById('reveal-art').style.display = 'none';
     document.getElementById('reveal-art').src = '';
 
-    // ── Play the audio preview ──
     audio.src    = song.previewUrl;
     audio.volume = 1.0;
     audio.play().catch(console.error);
@@ -748,15 +578,6 @@ function nextTrack() {
     _startTimer();
 }
 
-/**
- * getMCLabel(s)
- * ──────────────
- * PRIVATE — returns the display string for an MC button based on current mode.
- * Used by nextTrack() to build MC options and by evaluateGuess() to find the answer.
- *
- * @param  {Object} s  — iTunes track result object
- * @returns {string}   — "Artist - Song Title" | "Song Title" | "Movie Name"
- */
 function getMCLabel(s) {
     if (state.gameState.mode === 'movie')  return getMovieName(s);
     if (state.gameState.mode === 'artist') return s.trackName;
@@ -768,28 +589,6 @@ function getMCLabel(s) {
 // SECTION 9 — ROUND TIMER (_startTimer)
 // ==============================================================================
 
-/**
- * _startTimer()
- * ──────────────
- * PRIVATE — runs the round countdown. Manages three distinct timer phases:
- *
- * PHASE A — Listening phase (state.timeLeft counting down):
- *   · Updates the visual timer bar (orange fill, shrinks left).
- *   · Syncs state.timeLeft to Firebase so phone clients see the live timer.
- *   · Plays sfxTick in the final 3 seconds.
- *   · At 10s: triggers the lifeline if not already used (non-hard modes).
- *   · At 0s in multiplayer: enters grace period instead of evaluating immediately.
- *   · At 0s in solo/hard: calls handleStop() or evaluateGuess(false).
- *
- * PHASE B — Grace period (multiplayer only):
- *   After the song finishes, the host gives players 30 extra seconds to type.
- *   A "Song completed!" message appears. After grace period ends, the host
- *   reads all submitted guesses from Firebase and evaluates.
- *
- * TIMER STORAGE:
- *   state.timerId holds the setInterval ID so it can be cancelled by
- *   handleStop(), forceLifeline(), evaluateGuess(), or evaluateMultiplayerRound().
- */
 function _startTimer() {
     const timerElement = document.getElementById('timer');
     timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill"></div></div>`;
@@ -800,18 +599,15 @@ function _startTimer() {
         const percentage = (state.timeLeft / state.timeLimit) * 100;
         if (timerFill) timerFill.style.width = `${percentage}%`;
 
-        // Sync to Firebase for multiplayer phone displays
         if (state.isMultiplayer && state.isHost) {
             db.ref(`rooms/${state.roomCode}/timeLeft`).set(state.timeLeft);
         }
 
-        // Auditory urgency cue
         if (state.timeLeft <= 3 && state.timeLeft > 0 && !state.hasUsedLifeline) {
             if (timerFill) timerFill.style.backgroundColor = 'var(--fail)';
             sfxTick.currentTime = 0; sfxTick.play().catch(() => {});
         }
 
-        // Lifeline auto-trigger at 10s (non-hard, non-lifeline-used)
         if (state.timeLeft === 10 && !state.isGracePeriod && state.gameState.level !== 'hard' && !state.hasUsedLifeline) {
             if (state.isMultiplayer && state.isHost) {
                 db.ref(`rooms/${state.roomCode}/lifelineForced`).set(true);
@@ -823,7 +619,6 @@ function _startTimer() {
 
         if (state.timeLeft <= 0) {
             if (state.isMultiplayer && state.isHost && !state.isGracePeriod) {
-                // ── Multiplayer: enter grace period instead of snapping to evaluation ──
                 state.isGracePeriod = true;
                 state.timeLeft      = 30;
                 audio.pause();
@@ -851,21 +646,6 @@ function _startTimer() {
 // SECTION 10 — LIFELINE SYSTEM (forceLifeline / triggerLifeline / handleStop)
 // ==============================================================================
 
-/**
- * forceLifeline()
- * ────────────────
- * EXPORTED — called when the player taps "Multiple Choice" before 10s.
- * Jumps the timer to 10s and immediately triggers the MC lifeline.
- *
- * COST:
- *   state.forcedEarly = true tells evaluateGuess() to cap the score at
- *   5 points regardless of MC correctness. The player trades max score
- *   for a guaranteed safety net.
- *
- * GUARD:
- *   Only fires if timeLeft > 10 (can't use lifeline once it's already out)
- *   and !hasUsedLifeline (idempotent).
- */
 export function forceLifeline() {
     if (state.timeLeft > 10 && !state.hasUsedLifeline) {
         state.forcedEarly = true;
@@ -874,14 +654,6 @@ export function forceLifeline() {
     }
 }
 
-/**
- * triggerLifeline()
- * ──────────────────
- * PRIVATE — shows the MC buttons and hides the Stop/Type buttons.
- * Called by the auto-trigger at 10s OR by forceLifeline() early.
- *
- * setupMC() injects the button HTML and syncs options to Firebase for phones.
- */
 function triggerLifeline() {
     state.hasUsedLifeline = true;
     document.getElementById('btn-container').classList.add('hidden');
@@ -890,24 +662,6 @@ function triggerLifeline() {
     setupMC();
 }
 
-/**
- * handleStop()
- * ─────────────
- * EXPORTED — called when the player taps "Stop & Guess".
- * Pauses the audio and shows the typing input fields.
- *
- * SCORE LOCK:
- *   state.scoreLock = state.timeLeft at the moment of stopping.
- *   This is the maximum possible score for the round — it cannot increase
- *   by waiting to type. Hard mode triples this to reward brave early stops.
- *
- * TYPING TIMER:
- *   A separate 20s guess timer (state.guessTimerId) begins. An orange
- *   progress bar counts down. At 0, evaluateGuess() fires automatically.
- *
- * FOCUS:
- *   The correct input field gets auto-focus so players can immediately type.
- */
 export function handleStop() {
     if (state.isProcessing) return;
     state.isProcessing = true;
@@ -930,7 +684,6 @@ export function handleStop() {
             else document.getElementById('guess-movie').focus();
         }, 50);
 
-        // ── 20-second typing countdown ──
         let guessTime = 20;
         const timerElement = document.getElementById('timer');
         timerElement.innerHTML = `<div class="timer-bar-container"><div id="timer-bar-fill" class="timer-bar-fill" style="background: #f39c12;"></div></div>`;
@@ -950,15 +703,6 @@ export function handleStop() {
     }
 }
 
-/**
- * setupMC()
- * ──────────
- * PRIVATE — injects MC buttons into #mc-fields using pre-built state.currentMCOptions.
- * Also syncs to Firebase so phone clients render the same options.
- *
- * Each button's onclick passes the clicked element so evaluateGuess can
- * highlight it red/green immediately without a querySelector call.
- */
 function setupMC() {
     const container = document.getElementById('mc-fields');
     container.innerHTML = '';
@@ -981,19 +725,6 @@ function setupMC() {
 // SECTION 11 — FUZZY ANSWER GRADING (levenshtein / isCloseEnough)
 // ==============================================================================
 
-/**
- * levenshtein(a, b)
- * ──────────────────
- * PRIVATE — standard dynamic-programming Levenshtein edit-distance algorithm.
- * Returns the minimum number of single-character edits (insert/delete/replace)
- * needed to transform string a into string b.
- *
- * Used by isCloseEnough() to allow minor typos without rejecting a correct guess.
- *
- * @param  {string} a — First string
- * @param  {string} b — Second string
- * @returns {number}  — Edit distance (0 = identical)
- */
 function levenshtein(a, b) {
     const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
     for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
@@ -1006,38 +737,6 @@ function levenshtein(a, b) {
     return matrix[b.length][a.length];
 }
 
-/**
- * isCloseEnough(guess, actual, isArtist)
- * ───────────────────────────────────────
- * PRIVATE — the core answer-matching engine. Returns true if the player's
- * guess is "close enough" to the actual answer using a multi-pass strategy.
- *
- * PASS 1 — Exact clean match:
- *   Strips parenthetical content and special characters, lowercases both.
- *   "Taylor Swift" matches "Taylor Swift (feat. Ed Sheeran)".
- *
- * PASS 2 — Phonetic normalization:
- *   Reduces doubled consonants, replaces 'y' with 'i', drops 'h'.
- *   Helps with phonetic spelling variations ("Rhianna" → "Riana").
- *
- * PASS 3 — Stop-word filtering + word matching:
- *   Removes common filler words, then checks if key words from the guess
- *   appear in the actual answer. Allows partial song-title matches.
- *
- * PASS 4 — Levenshtein fuzzy match:
- *   Per-word edit-distance check. Allowed typos scale with word length:
- *   short words (≤5 chars) → 0 typos; medium (5–8) → 1; long (8+) → 2–3.
- *
- * Artist-specific logic:
- *   For artists, a single-word match against any word in the artist name
- *   is enough (e.g. "Sheeran" matches "Ed Sheeran"). Songs require ≥2
- *   matching content words OR a single match on a ≤2-word title.
- *
- * @param  {string}  guess    — Player's raw text input
- * @param  {string}  actual   — The correct answer from iTunes data
- * @param  {boolean} isArtist — Whether this is an artist field check
- * @returns {boolean}         — true if the guess is accepted as correct
- */
 function isCloseEnough(guess, actual, isArtist = false) {
     if (!guess || !actual) return false;
 
@@ -1046,7 +745,6 @@ function isCloseEnough(guess, actual, isArtist = false) {
 
     if (cleanA === cleanG || cleanA.includes(cleanG)) return true;
 
-    // Phonetic normalization
     const reduce = s => s
         .replace(/[^a-z0-9 ]/g, '')
         .replace(/([a-z])\1+/g, '$1')
@@ -1065,7 +763,6 @@ function isCloseEnough(guess, actual, isArtist = false) {
 
     if (gWords.length === 0) return false;
 
-    // Artist: single-word match is sufficient
     if (isArtist && gWords.length === 1) {
         const gW = gWords[0];
         const allowedTypos = gW.length >= 8 ? 2 : (gW.length > 5 ? 1 : 0);
@@ -1074,7 +771,6 @@ function isCloseEnough(guess, actual, isArtist = false) {
         }
     }
 
-    // Song/movie: require ≥2 content word matches
     if (!isArtist) {
         let matchCount = 0;
         gWords.forEach(gW => {
@@ -1089,7 +785,6 @@ function isCloseEnough(guess, actual, isArtist = false) {
         if (matchCount >= 2) return true;
     }
 
-    // Short artist name: single Levenshtein check against the full name
     if (aWords.length <= 1) {
         const gW = gWords[0];
         if (aWords.length === 1) {
@@ -1099,7 +794,6 @@ function isCloseEnough(guess, actual, isArtist = false) {
         return false;
     }
 
-    // Multi-word: count cross-word matches
     let matchCount = 0;
     const matchedIdx = new Set();
     gWords.forEach(gW => {
@@ -1120,40 +814,11 @@ function isCloseEnough(guess, actual, isArtist = false) {
 // SECTION 12 — SCORE HELPERS (getNormalizedScore / updateLeaderboard)
 // ==============================================================================
 
-/**
- * getNormalizedScore(rawScore)
- * ─────────────────────────────
- * PRIVATE — converts a raw point accumulation to a normalized 0–1000 scale.
- *
- * WHY normalize?
- *   Raw scores depend on number of rounds played, which varies per session.
- *   Normalizing gives a universal performance metric for the finale screen,
- *   leaderboard, and shareChallenge() emoji grid.
- *
- * FORMULA:
- *   maxRawPossible = rounds × 60 + (rounds ÷ 3) × 50  (streaks included)
- *   normalized     = min(1000, round(raw / maxRaw × 1000))
- *
- * @param  {number} rawScore — Accumulated raw points for one player
- * @returns {number}         — Score on 0–1000 scale
- */
 function getNormalizedScore(rawScore) {
     const maxRawPossible = (state.roundsPerPlayer * 60) + (Math.floor(state.roundsPerPlayer / 3) * 50);
     return Math.min(1000, Math.round((rawScore / maxRawPossible) * 1000));
 }
 
-/**
- * updateLeaderboard(activeIdx)
- * ─────────────────────────────
- * PRIVATE — re-renders the score pill strip in #score-board.
- *
- * · activeIdx = the player whose turn it currently is (highlighted).
- * · activeIdx = -1 means the round just ended — all pills shown at equal weight.
- * · In multiplayer host mode, the score board is always cleared (scores shown
- *   on individual phone screens instead to prevent TV spoilers).
- *
- * @param {number} activeIdx — Index into state.rawScores / state.streaks
- */
 function updateLeaderboard(activeIdx = 0) {
     if (state.isMultiplayer && state.isHost) {
         document.getElementById('score-board').innerHTML = '';
@@ -1175,38 +840,6 @@ function updateLeaderboard(activeIdx = 0) {
 // SECTION 13 — GUESS EVALUATION: SOLO (evaluateGuess)
 // ==============================================================================
 
-/**
- * evaluateGuess(isCorrectMC, clickedBtn)
- * ────────────────────────────────────────
- * EXPORTED — handles solo scoring for both typed and MC guesses.
- * Called by: Submit button, typing timer expiry, MC button clicks,
- *            handleStop() fallback, or timer expiry in solo/hard.
- *
- * MODES:
- *   Typed (isCorrectMC === null):
- *     · Reads guess-artist, guess-song, guess-movie fields.
- *     · Runs isCloseEnough() for each relevant field.
- *     · Genre: either correct = points; both correct = 2× points.
- *     · Artist/Movie: correct = 2× points.
- *     · Score = state.scoreLock (time remaining when Stop was pressed).
- *
- *   MC (isCorrectMC = true/false):
- *     · Score = state.timeLeft (remaining seconds at click time).
- *     · forcedEarly = true → caps MC score at 5 regardless of time.
- *     · MC correct = streak reset to 0 (no streak bonus via MC).
- *
- * SNIPER TROPHY:
- *   If a typed correct answer came in with > 27s remaining (stopped ≤ 3s
- *   in), state.userStats.song_trivia.sniperHits is incremented.
- *
- * MATCH HISTORY:
- *   Result is pushed to state.matchHistory[pIdx] as:
- *   🟩 typed-correct | 🟨 MC-correct | 🟥 wrong
- *   Used by shareChallenge() to build the emoji grid.
- *
- * @param {boolean|null}     isCorrectMC — null = typed submit; true/false = MC click
- * @param {HTMLElement|null} clickedBtn  — The MC button tapped (for colour feedback)
- */
 export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
     if (state.isProcessing && isCorrectMC === null) return;
     state.isProcessing = true;
@@ -1218,7 +851,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
     document.getElementById('guess-fields').classList.add('hidden');
     document.getElementById('btn-container').classList.add('hidden');
 
-    // ── MC button visual feedback ──
     if (state.hasUsedLifeline) {
         document.querySelectorAll('.mc-btn').forEach(b => { b.disabled = true; });
         if (clickedBtn) clickedBtn.classList.add(isCorrectMC ? 'correct' : 'wrong');
@@ -1226,7 +858,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
 
     const pIdx = state.curIdx % state.numPlayers;
 
-    // ── Determine points base ──
     let roundPts = 0;
     if (state.hasUsedLifeline) {
         roundPts = state.forcedEarly ? 5 : Math.max(0, state.timeLeft);
@@ -1234,7 +865,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
         roundPts = state.scoreLock;
     }
 
-    // ── Grade the answer ──
     let correct = false, artOk = false, sonOk = false, movOk = false;
     const realA = state.songs[state.curIdx].artistName;
     const realS = state.songs[state.curIdx].trackName;
@@ -1259,12 +889,10 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
         }
     }
 
-    // ── Record match history emoji ──
     state.matchHistory[pIdx].push(correct
         ? (state.hasUsedLifeline ? '🟨' : '🟩')
         : '🟥');
 
-    // ── Build feedback HTML ──
     const succColor = 'var(--success)', failColor = 'var(--fail)';
     let fbHTML = '';
 
@@ -1284,7 +912,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
 
     if (correct) {
         if (!state.hasUsedLifeline) {
-            // Sniper trophy: stopped in first 3 seconds
             if (state.scoreLock >= 27) {
                 state.userStats.song_trivia.sniperHits = (state.userStats.song_trivia.sniperHits || 0) + 1;
             }
@@ -1311,7 +938,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
         roundPts = 0;
     }
 
-    // ── Reveal correct answer and album art ──
     fbHTML += `<div style="font-size:1.05rem; color:var(--dark-text); margin-top:10px;">${realA} — ${realS}</div>`;
     if (state.gameState.mode === 'movie') {
         fbHTML += `<div style="font-size:0.9rem; color:var(--primary); margin-top:3px;">🎬 ${realM}</div>`;
@@ -1324,7 +950,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
     img.classList.add('fade-in');
     img.style.display = 'block';
 
-    // ── Clear input fields ──
     ['guess-artist', 'guess-song', 'guess-movie'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -1340,36 +965,6 @@ export function evaluateGuess(isCorrectMC = null, clickedBtn = null) {
 // SECTION 14 — GUESS EVALUATION: MULTIPLAYER (evaluateMultiplayerRound)
 // ==============================================================================
 
-/**
- * evaluateMultiplayerRound(players)
- * ───────────────────────────────────
- * EXPORTED — scores ALL connected players simultaneously from their Firebase guesses.
- * Called by multiplayer.js when all players have locked in, OR when the grace period ends.
- *
- * FLOW:
- *   1. Guard against double-evaluation.
- *   2. Stop timer and audio.
- *   3. For each player: determine if their guess is correct (typed or MC).
- *   4. Apply streak bonus and double-round multiplier.
- *   5. Build per-player feedback HTML.
- *   6. Reveal album art.
- *   7. Call finalizeMultiplayerRound() to write updated scores to Firebase.
- *   8. Advance to next track after 5s.
- *
- * GRACE PERIOD GUESSES:
- *   If a guess arrived during the grace period (p.guess.phase === 'grace'),
- *   it's worth only 5 points regardless of MC timing.
- *
- * SCORING:
- *   Typed correct (genre, both fields):  basePts × 2
- *   Typed correct (artist/movie):        basePts × 2
- *   MC correct (audio phase):            p.guess.time points
- *   MC correct (grace phase):            5 points
- *   Streak bonus:                        +50 every 3rd correct (typed only)
- *   Double round:                        × 2 (applied last)
- *
- * @param {Object} players — Firebase snapshot value: { playerId: { name, guess, score } }
- */
 export function evaluateMultiplayerRound(players) {
     if (state.isProcessing) return;
     state.isProcessing = true;
@@ -1388,12 +983,11 @@ export function evaluateMultiplayerRound(players) {
     const results  = [];
 
     playerIds.forEach((pid, index) => {
-        const p       = players[pid];
+        const p        = players[pid];
         let roundPts  = 0;
         let correct   = false;
         let artOk = false, sonOk = false, movOk = false;
 
-        // basePts: grace period caps at 5, otherwise use the time value
         const basePts = (p.guess?.phase === 'grace') ? 5 : (p.guess?.time || 0);
 
         if (p.guess?.isMC) {
@@ -1463,24 +1057,6 @@ export function evaluateMultiplayerRound(players) {
 // SECTION 15 — PHONE CLIENT (submitClientMCGuess)
 // ==============================================================================
 
-/**
- * submitClientMCGuess(isCorrect)
- * ───────────────────────────────
- * EXPORTED — called on the phone when a player taps an MC button.
- * Reads the current timer from the phone's display and writes the
- * guess object to Firebase under the player's node.
- *
- * PHASE DETECTION:
- *   If the grace-period message is visible on the phone (#client-grace-msg
- *   not hidden), the guess is tagged phase: 'grace' — worth only 5 points.
- *   Otherwise phase: 'audio' — full time-based scoring.
- *
- * TIME CAP:
- *   finalTime = min(10, currentTime) prevents inflated scores if the phone
- *   timer drifts slightly above 10 due to network latency.
- *
- * @param {boolean} isCorrect — Whether the tapped button was the correct answer
- */
 export function submitClientMCGuess(isCorrect) {
     const currentTime  = parseInt(document.getElementById('client-timer-display')?.innerText || 0);
     const graceVisible = !document.getElementById('client-grace-msg')?.classList.contains('hidden');
@@ -1501,29 +1077,6 @@ export function submitClientMCGuess(isCorrect) {
 // SECTION 16 — END GAME (endGameSequence / shootConfetti)
 // ==============================================================================
 
-/**
- * endGameSequence()
- * ──────────────────
- * PRIVATE — transitions play-screen → final-screen and writes stat updates.
- *
- * TROPHY CHECKS (written here to ensure they run at the end of every game):
- *   perf   — normalized score ≥ 900
- *   mara   — roundsPerPlayer ≥ 20
- *   snip   — sniperHits ≥ 10 (cumulative across games)
- *   streak — currentStreak ≥ 5 (consecutive days)
- *
- * DAY STREAK LOGIC:
- *   Reads lastPlayedDate. If yesterday, increment currentStreak.
- *   If any other day, reset to 1. Prevents same-day double-counting.
- *
- * MULTIPLAYER FINALE:
- *   Reads the final Firebase player scores, normalizes them, sorts into a
- *   podium and writes to /rooms/{code}/finalLeaderboard.
- *
- * SOLO FINALE:
- *   Renders a gradient score card with the normalized score and an emoji grid
- *   showing the full round-by-round match history.
- */
 function endGameSequence() {
     document.getElementById('play-screen').classList.add('hidden');
     document.getElementById('final-screen').classList.remove('hidden');
@@ -1614,14 +1167,6 @@ function endGameSequence() {
         </div>`;
 }
 
-/**
- * shootConfetti()
- * ────────────────
- * PRIVATE — fires 100 colourful confetti squares from the top of the screen.
- * Uses the Web Animations API for GPU-accelerated CSS transforms.
- * Each piece uses a random color from the platform palette (state.js colors[]).
- * Cleans itself up via onfinish callback — no DOM leaks.
- */
 function shootConfetti() {
     for (let i = 0; i < 100; i++) {
         const conf = document.createElement('div');
@@ -1643,21 +1188,6 @@ function shootConfetti() {
 // SECTION 17 — SHARE CHALLENGE
 // ==============================================================================
 
-/**
- * shareChallenge()
- * ─────────────────
- * EXPORTED — wired to the "Share" button on the finale screen.
- * Builds an emoji result grid and a replay URL, then shares via Web Share API
- * or falls back to clipboard.
- *
- * REPLAY URL:
- *   Encodes the exact track IDs played so the recipient can challenge with
- *   the identical song set: ?score=X&tracks=id1,id2,id3
- *
- * EMOJI GRID:
- *   🟩 = typed correct | 🟨 = MC correct | 🟥 = wrong
- *   5 results per row, newline between rows.
- */
 export function shareChallenge() {
     const normalizedScores = state.rawScores.map(s => getNormalizedScore(s));
     const maxScore = Math.max(...normalizedScores);
@@ -1687,29 +1217,6 @@ export function shareChallenge() {
 // SECTION 18 — APPLE MUSIC PLAYLIST IMPORT
 // ==============================================================================
 
-/**
- * extractPlaylistData(urlInput)
- * ──────────────────────────────
- * PRIVATE — parses an Apple Music playlist URL, extracts track names via a
- * CORS proxy, then fetches matching previews from iTunes for each track.
- *
- * WHY a proxy?
- *   Apple Music pages are served with CORS headers that block direct XHR.
- *   api.codetabs.com is a public CORS proxy that forwards the raw HTML.
- *
- * PARSING STRATEGY:
- *   Reads application/ld+json script tags from the Apple Music page, finds
- *   the MusicPlaylist structured data block, and extracts track titles.
- *   Each track is then searched on iTunes for a matching preview URL.
- *
- * LIMITATIONS:
- *   · Only works with public Apple Music playlists (private playlists
- *     return no structured data).
- *   · Rate-limited by the CORS proxy — large playlists may be slow.
- *
- * @param  {string} urlInput — An Apple Music playlist URL
- * @returns {Array}          — Array of iTunes track objects with previewUrl
- */
 async function extractPlaylistData(urlInput) {
     const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlInput)}`;
     const response = await fetch(proxyUrl);
@@ -1745,4 +1252,74 @@ async function extractPlaylistData(urlInput) {
 
     if (extractedTracks.length === 0) throw new Error("No playable tracks found in playlist.");
     return extractedTracks;
+}
+
+
+// ==============================================================================
+// SECTION 19 — UI & PLATFORM BRIDGES
+// ==============================================================================
+
+const subOptions = {
+    movie: ['Disney Classics', 'Bollywood Hits', 'Tamil Cinema', 'Hollywood Blockbusters'],
+    genre: ['classic-rock', '2000s-hits', 'shwe-special', 'one-hit-wonders', 'custom'],
+    artist: ['custom'] 
+};
+
+export function onModeSelect(mode) {
+    const customInput = document.getElementById('custom-input');
+    const subArea = document.getElementById('sub-selection-area');
+    
+    if (subOptions[mode]) {
+        state.gameState.sub = subOptions[mode][0]; 
+        document.getElementById('sub-label').innerText = mode === 'movie' ? 'Select Cinema Region' : (mode === 'artist' ? 'Select Artist' : 'Select Era / Genre');
+        customInput.classList.add('hidden');
+        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
+        customInput.type = "text";
+        subArea.classList.remove('hidden');
+
+        // Render the pills locally!
+        const container = document.getElementById('sub-pills');
+        container.innerHTML = '';
+        subOptions[mode].forEach(opt => {
+            const pill = document.createElement('div');
+            pill.className = `pill pill-wide ${state.gameState.sub === opt ? 'active' : ''}`;
+            pill.innerText = opt === 'shwe-special' ? 'Shwe Special (90s)' : (opt.charAt(0).toUpperCase() + opt.slice(1).replace(/-/g, ' '));
+            pill.onclick = () => window.setSub(opt, pill);
+            container.appendChild(pill);
+        });
+    }
+
+    const levelGroup = document.getElementById('level-group');
+    if (mode === 'movie') {
+        window.setLevel('medium', document.getElementById('lvl-medium'));
+        levelGroup.style.opacity = '0.5';
+        levelGroup.style.pointerEvents = 'none';
+    } else {
+        levelGroup.style.opacity = '1';
+        levelGroup.style.pointerEvents = 'auto';
+    }
+}
+
+export function onSubSelect(val) {
+    const customInput = document.getElementById('custom-input');
+    if (val === 'custom') {
+        customInput.classList.remove('hidden');
+        customInput.placeholder = "Paste your Public Apple Music Playlist or any custom text comma separated";
+        customInput.type = "text";
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+    }
+}
+
+export function hasPlayedDaily() {
+    return state.userStats.song_trivia ? state.userStats.song_trivia.playedDailyToday : false;
+}
+
+export function checkDailyReset() {
+    const todayStr = new Date().toDateString();
+    if (state.userStats.song_trivia && state.userStats.song_trivia.lastPlayedDate !== todayStr && state.userStats.song_trivia.lastPlayedDate !== null) {
+        state.userStats.song_trivia.playedDailyToday = false;
+        localStorage.setItem('yardbirdPlatformStats', JSON.stringify(state.userStats));
+    }
 }
