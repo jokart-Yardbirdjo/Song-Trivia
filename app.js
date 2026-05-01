@@ -17,6 +17,7 @@
 // ==========================================
 // Consolidate the state and bgm import here!
 //import { state, bgm } from './state.js';
+import { state, audio, sfxTick, sfxCheer, sfxBuzzer } from './state.js';
 
 import { 
     showModal, hideModal, setMode, setSub, setPill, setLevel, 
