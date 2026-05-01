@@ -223,6 +223,28 @@
     </div>
 </div>
 
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 400px; text-align: left;">
+        <h2 style="margin-bottom: 5px; text-align: center;">Platform Settings</h2>
+        <p style="text-align: center; color: var(--dark-text); font-size: 0.9rem; margin-bottom: 20px;">
+            Bring Your Own Key (BYOK) for Infinite AI modes.
+        </p>
+
+        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--highlight);">AI Provider</label>
+        <div id="ai-provider-pills" style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <div class="pill pill-wide active" onclick="selectAIProvider('openai', this)">OpenAI</div>
+            <div class="pill pill-wide" onclick="selectAIProvider('gemini', this)">Gemini</div>
+            <div class="pill pill-wide" onclick="selectAIProvider('claude', this)">Claude</div>
+        </div>
+
+        <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--highlight);">API Key</label>
+        <input type="password" id="global-ai-key" class="glass-input" placeholder="Paste your API key here..." style="width: 100%; margin-bottom: 20px;">
+
+        <button class="btn btn-main" onclick="saveAISettings()" style="width: 100%;">Save Settings</button>
+        <button class="btn btn-alt" onclick="hideModal('settings-modal')" style="width: 100%; margin-top: 10px;">Cancel</button>
+    </div>
+</div>  
+
 
 <!-- ─── MODAL B: Stats / Lifetime Locker Room ─────────────── -->
 <!--
@@ -454,6 +476,8 @@
 
             <!-- ℹ Info / Rules button — always visible -->
             <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn">i</button>
+            <!-- Settings button — always visible on home screen -->
+            <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="right: 50px; font-size: 1.2rem; padding-bottom: 4px;">⚙️</button>
 
             <!-- 📊 Stats / Locker Room button (hidden on main menu) -->
             <button onclick="openStatsLocker()" class="header-btn" id="stats-btn">📊</button>
