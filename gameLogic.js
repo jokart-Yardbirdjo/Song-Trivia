@@ -783,38 +783,42 @@ function nextTrack() {
     document.getElementById('guess-fields').classList.add('hidden');
     document.getElementById('mc-fields').classList.add('hidden');
 
-    audio.src = state.songs[state.curIdx].previewUrl; 
-    audio.load();
+    // --- REPLACE YOUR EXISTING AUDIO LOAD BLOCK WITH THIS ENTIRE SNIPPET ---
 
-    let playPromise = audio.play();
-    if (playPromise !== undefined) {
+audio.src = state.songs[state.curIdx].previewUrl;
+audio.load();
+
+const timerEl = document.getElementById('timer');
+timerEl.innerHTML = 'Load...';
+
+let playPromise = audio.play();
+
+if (playPromise !== undefined) {
     playPromise
         .then(() => {
-            // Success! The browser allowed it.
+            // Success! Browser allowed it.
             startRoundClock();
         })
         .catch(err => {
-            // Mobile Chrome blocked it due to the async fetch delay.
+            // Mobile Chrome blocked it. Recover the UI.
             console.warn("🔇 Autoplay blocked, recovering UI...", err);
             
-            // Cleanly morph the timer text into a clickable prompt
-            const timerEl = document.getElementById('timer');
             timerEl.innerHTML = `<span style="cursor:pointer; color:var(--primary); font-size:1.5rem; animation: pulse 1s infinite alternate;">▶️ TAP TO PLAY</span>`;
             
-            // Attach a pristine, one-time event listener to satisfy Chrome
             timerEl.onclick = () => {
                 timerEl.onclick = null; // Clean up listener
                 timerEl.innerHTML = 'Load...'; // Reset UI
                 
-                // Chrome is now happy because this play() is directly tied to this exact click
                 audio.play()
                     .then(() => startRoundClock())
-                    .catch(() => startRoundClock()); // Fallback to ensure game never hangs
+                    .catch(() => startRoundClock()); // Failsafe
             };
         });
-    } else {
-        startRoundClock();
-    }
+} else {
+    startRoundClock();
+}
+
+// -----------------------------------------------------------------------
 }
 
 function startRoundClock() {
