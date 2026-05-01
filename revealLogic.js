@@ -77,7 +77,8 @@
  */
 
 import { db } from './firebase.js';
-import { state, sfxTick, sfxCheer, sfxBuzzer, colors, bgm } from './state.js';
+//import { state, sfxTick, sfxCheer, sfxBuzzer, colors, bgm } from './state.js';
+import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
 
 
 // ==============================================================================
@@ -730,7 +731,7 @@ function _startGridTimer() {
     const timerFill = document.getElementById('timer-bar-fill');
 
     // NEW: Start the music
-    bgm.play().catch(e => console.warn("BGM blocked by browser policy until interaction."));
+    //bgm.play().catch(e => console.warn("BGM blocked by browser policy until interaction."));
 
     // ── Main tick: 100ms interval for smooth bar animation ──
     state.timerId = setInterval(() => {
@@ -1088,8 +1089,8 @@ export function evaluateGuess(isCorrect, clickedBtn = null) {
     clearInterval(state.timerId);
 
     // NEW: Stop the music
-    bgm.pause();
-    bgm.currentTime = 0;
+    //bgm.pause();
+    //bgm.currentTime = 0;
 
     // ── Disable all MC buttons so no further input registers ──
     document.querySelectorAll('#mc-fields .mc-btn').forEach(b => { b.disabled = true; });
@@ -1188,8 +1189,8 @@ export function evaluateMultiplayerRound(players) {
     clearInterval(state.timerId);
 
     // NEW: Stop the music
-    bgm.pause();
-    bgm.currentTime = 0;
+    //bgm.pause();
+    //bgm.currentTime = 0;
 
     // ── Instantly reveal all grid blocks on host screen ──
     for (let i = 0; i < 12; i++) {
