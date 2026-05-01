@@ -311,5 +311,47 @@ export function renderPlaylist(platform) {
     document.getElementById('playlist-list').innerHTML = playlistHTML;
 }
 
+// ==========================================
+// AI SETTINGS MODAL LOGIC (ui.js)
+// ==========================================
 
+/**
+ * Handles the visual switching of AI provider pills in the settings modal.
+ */
+export function selectAIProvider(provider, element) {
+    // Remove active class from all provider pills
+    const pills = document.getElementById('ai-provider-pills').children;
+    for (let pill of pills) {
+        pill.classList.remove('active');
+    }
+    // Add active class to the clicked pill
+    element.classList.add('active');
+    
+    // Temporarily store the selection on the window object before saving
+    window.tempAIProvider = provider;
+}
+
+/**
+ * Saves the selected provider and key to localStorage.
+ */
+export function saveAISettings() {
+    const keyInput = document.getElementById('global-ai-key').value.trim();
+    const provider = window.tempAIProvider || 'openai'; // Default to OpenAI if none clicked
+
+    if (!keyInput) {
+        alert("Please enter a valid API key.");
+        return;
+    }
+
+    // Save to device
+    localStorage.setItem('yardbird_ai_provider', provider);
+    localStorage.setItem('yardbird_ai_key', keyInput);
+
+    console.log(`✅ AI Settings Saved: ${provider}`);
+    hideModal('settings-modal');
+}
+
+// Attach these to the window so the inline HTML onclick attributes can see them
+window.selectAIProvider = selectAIProvider;
+window.saveAISettings = saveAISettings;
 
