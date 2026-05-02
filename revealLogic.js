@@ -79,6 +79,7 @@
 import { db } from './firebase.js';
 //import { state, sfxTick, sfxCheer, sfxBuzzer, colors, bgm } from './state.js';
 import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
+import { generateAI } from './ai.js';
 
 
 // ==============================================================================
@@ -188,19 +189,8 @@ export function onModeSelect(mode) {
  */
 export function onSubSelect(val) {
     const customInput = document.getElementById('custom-input');
-    if (!customInput) return;
-
-    if (val === 'ai_infinite') {
-        customInput.classList.remove('hidden');
-        customInput.placeholder = "Paste your OpenAI API Key (sk-...)";
-        customInput.type = "password";
-        // Pre-fill from a previous session so the player doesn't retype it
-        const savedKey = localStorage.getItem('yardbird_openai_key');
-        if (savedKey) customInput.value = savedKey;
-    } else {
-        customInput.classList.add('hidden');
-        customInput.value = '';
-    }
+    // Global AI Bridge handles the API key. Ensure custom text input remains hidden.
+    if (customInput) customInput.classList.add('hidden');
 }
 
 
@@ -476,18 +466,9 @@ export async function startGame() {
     // ── 5. Show initial loading state in the feedback area ──
     _setFeedback(`<div class="reveal-loading-msg">Initializing system...</div>`);
 
-    // ── 6. Data routing: Party Pack (local JSON) vs. Infinite AI (OpenAI) ──
+    // ── 6. Data routing: Party Pack (local JSON) vs. Infinite AI (Global Bridge) ──
     if (state.gameState.sub === 'ai_infinite') {
-        const apiKey = (document.getElementById('custom-input')?.value || '').trim();
-
-        if (!apiKey.startsWith('sk-')) {
-            // Invalid key — fall back gracefully rather than crashing
-            alert("Invalid or missing OpenAI key. Falling back to Party Pack.");
-            await _loadPartyPackData();
-        } else {
-            localStorage.setItem('yardbird_openai_key', apiKey);
-            await _fetchInfiniteAIData(apiKey);
-        }
+        await _fetchInfiniteAIData(); // Bridge handles the key automatically
     } else {
         await _loadPartyPackData();
     }
@@ -839,11 +820,11 @@ async function _loadPartyPackData() {
 }
 
 /**
- * _fetchInfiniteAIData(apiKey)
+ * _fetchInfiniteAIData()
  * ─────────────────────────────
- * Calls OpenAI GPT-4o-mini to generate a fresh batch of round subjects.
+ * Calls the global ai.js bridge to generate a fresh batch of round subjects.
  */
-async function _fetchInfiniteAIData(apiKey) {
+async function _fetchInfiniteAIData() {
     _setFeedback(`<div class="reveal-loading-msg">✨ AI is generating unique content...</div>`);
 
     // Category labels for the AI prompt
@@ -868,53 +849,33 @@ async function _fetchInfiniteAIData(apiKey) {
         ? 'CRITICAL: Many artworks share generic names. You MUST append the artist name or medium to the Wikipedia title (e.g., "The Kiss (Klimt)", "David (Michelangelo)", "The Thinker (sculpture)").'
         : '';
 
-    const systemPrompt = `Generate a JSON array of ${state.maxRounds + 8} trivia items for a visual guessing game.
+    const sysPrompt = "You are a trivia game content generator. You output strict, valid JSON.";
+    
+    // Updated to request an Object containing an Array (Required by strict JSON modes)
+    const userPrompt = `Generate ${state.maxRounds + 8} trivia items for a visual guessing game.
 Category: ${catLabels[state.gameState.mode] || "popular culture"}.
 CRITICAL: Focus specifically on: ${seed}. Do NOT include the most obvious/common answers to ensure variety.
 The "imageKeyword" MUST be the exact English Wikipedia article title (e.g. "The Matrix (franchise)", "Thriller (Michael Jackson album)").
 ${artInstruction}
-Return ONLY a valid JSON array — no markdown, no backticks, no commentary.
-Each item must follow this exact shape:
-[{ "imageKeyword": "Wikipedia_Title", "answer": "Clean Display Name", "wrong": ["Wrong 1", "Wrong 2", "Wrong 3"] }]`;
+Format your response as a JSON object with a single key called "items" containing an array.
+Each object in the "items" array must follow this exact shape:
+{ "imageKeyword": "Wikipedia_Title", "answer": "Clean Display Name", "wrong": ["Wrong 1", "Wrong 2", "Wrong 3"] }`;
 
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [{ role: "system", content: systemPrompt }],
-                temperature: 0.9   // Higher temp = more variety across sessions
-            })
-        });
-
-        if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}`);
-
-        const data = await response.json();
-        const raw  = data.choices?.[0]?.message?.content?.trim() || '';
-
-        // ── AUTO-CLEANER: Strict Array Extraction ──
-        const firstBracket = raw.indexOf('[');
-        const lastBracket = raw.lastIndexOf(']');
+        // Call the bridge and force JSON parsing (true)
+        const aiData = await generateAI(sysPrompt, userPrompt, true);
         
-        if (firstBracket === -1 || lastBracket === -1) {
-            throw new Error("OpenAI did not return a valid JSON array structure.");
-        }
-        
-        const cleaned = raw.substring(firstBracket, lastBracket + 1);
-        const parsed  = JSON.parse(cleaned);
+        // Extract the array from the JSON object
+        const parsedQueue = aiData.items;
 
-        if (!Array.isArray(parsed) || parsed.length === 0) {
-            throw new Error("OpenAI returned empty or non-array JSON");
+        if (!Array.isArray(parsedQueue) || parsedQueue.length === 0) {
+            throw new Error("AI returned an empty or invalid array structure.");
         }
 
-        revealState.queue = _shuffleArray(parsed);
+        revealState.queue = _shuffleArray(parsedQueue);
 
     } catch (err) {
-        console.error("[TheReveal] OpenAI generation failed:", err);
+        console.error("[TheReveal] AI generation failed via bridge:", err);
         alert("AI generation failed. Falling back to Party Pack.");
         await _loadPartyPackData();
     }
