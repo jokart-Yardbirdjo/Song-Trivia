@@ -1,6 +1,7 @@
 // quoteLogic.js
 import { db } from './firebase.js';
 import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
+import { generateAI } from './ai.js';
 
 // At the top of quoteLogic.js
 export const manifest = {
@@ -135,21 +136,11 @@ export async function startGame() {
         document.getElementById('score-board').innerHTML = `<div class="score-pill" style="border-color:${colors[0]};"><div class="p-name" style="color:${colors[0]}">SCORE</div><div class="p-pts" style="color:var(--dark-text)">0</div><div class="p-streak" style="opacity:0">🔥 0</div></div>`;
     }
 
-    const customInput = document.getElementById('custom-input');
-    const apiKey = customInput ? customInput.value.trim() : "";
-
     // ==========================================
-    // PATH A: INFINITE AI MODE (CHECKS THE PILL!)
+    // PATH A: INFINITE AI MODE (Global Bridge)
     // ==========================================
     if (state.gameState.sub === 'ai_infinite') {
-        if (!apiKey || !apiKey.startsWith('sk-')) {
-            alert("Please paste a valid OpenAI API Key in the box!");
-            location.reload(); return;
-        }
-
-        // Save the key for future games
-        localStorage.setItem('consensus_openai_key', apiKey);
-
+        
         document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.5rem; margin-top:40px;">Generating AI Quotes...</div>`;
         
         let promptFocus = "";
@@ -157,32 +148,25 @@ export async function startGame() {
         else if (state.gameState.mode === 'celeb') promptFocus = "viral pop-culture moments, reality TV quotes, and famous celebrity tweets";
         else promptFocus = "well-known song lyrics and classic literature lines";
 
+        // Construct Prompts for the AI Bridge
+        const sysPrompt = `You are a premium trivia game generator. You output strict, valid JSON.`;
+        const userPrompt = `Generate exactly ${state.maxRounds} quotes focusing strictly on ${promptFocus}. Format as a JSON object with a "quotes" array. Each object must have "q" (the quote string), "a" (the real author/character string), and "wrong" (an array of 3 believable wrong author/character strings).`;
+
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [{ 
-                        role: "system", 
-                        content: `Generate exactly ${state.maxRounds} quotes focusing strictly on ${promptFocus}. Format as a JSON object with a "quotes" array. Each object must have "q" (the quote string), "a" (the real author/character string), and "wrong" (an array of 3 believable wrong author/character strings).`
-                    }],
-                    response_format: { type: "json_object" },
-                    temperature: 0.8 
-                })
-            });
+            // Call the global AI bridge and force JSON (true)
+            const aiData = await generateAI(sysPrompt, userPrompt, true);
             
-            const data = await response.json();
-            state.songs = JSON.parse(data.choices[0].message.content).quotes;
+            state.songs = aiData.quotes;
             state.globalPool = []; 
             
             nextRound();
             return; 
             
         } catch(e) {
-            console.error(e);
-            alert("AI Generation failed. Check API Key.");
-            location.reload(); return;
+            // ai.js handles the console.error, we just display the friendly UI feedback
+            document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-size:1.2rem; margin-top:40px; font-weight:bold;">❌ AI Generation Failed</div><div style="color:#aaa; margin-top:10px; font-size:0.9rem;">${e.message}</div>`;
+            setTimeout(() => location.reload(), 4000); 
+            return;
         }
     }
     
@@ -501,14 +485,7 @@ export function onModeSelect(mode) {
 
 export function onSubSelect(val) {
     const customInput = document.getElementById('custom-input');
-    if (val === 'ai_infinite') {
-        customInput.classList.remove('hidden');
-        customInput.placeholder = "Paste your OpenAI API Key (sk-...)";
-        customInput.type = "password";
-        const savedKey = localStorage.getItem('consensus_openai_key');
-        if (savedKey) customInput.value = savedKey;
-        customInput.focus();
-    } else {
-        customInput.classList.add('hidden');
-    }
+    // Global AI Bridge now handles the API key. 
+    // We ensure the custom text input remains safely hidden.
+    if (customInput) customInput.classList.add('hidden');
 }
