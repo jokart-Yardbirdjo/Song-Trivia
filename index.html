@@ -461,28 +461,50 @@
       like a standalone marquee heading rather than a nav label.
   ============================================================ -->
 
-        <div id="game-header">
+<div id="game-header">
 
-            <!-- ☰ Menu / Party Mode button (hidden on main menu) -->
             <button onclick="showModal('multiplayer-modal')"
                     class="header-btn"
                     id="menu-btn"
-                    style="left: 0; font-size: 1.2rem; padding-bottom: 4px;">
+                    style="left: 10px; font-size: 1.2rem; padding-bottom: 4px;">
                 ☰
             </button>
 
-            <!-- Dynamic page title — updated by JS on every screen change -->
-            <h1 id="main-title">YARDBIRD'S SONG TRIVIA</h1>
+            <h1 id="main-title" style="position: absolute; left: 45px; transform: none; text-align: left; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">YARDBIRD'S GAMES</h1>
 
-            <!-- ℹ Info / Rules button — always visible -->
-            <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn">i</button>
-            <!-- Settings button — always visible on home screen -->
-            <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="right: 50px; font-size: 1.2rem; padding-bottom: 4px;">⚙️</button>
+            <button onclick="openStatsLocker()" class="header-btn" id="stats-btn" style="right: 80px;">📊</button>
+            <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="right: 45px; font-size: 1.2rem; padding-bottom: 4px;">⚙️</button>
+            <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn" style="right: 10px;">ℹ️</button>
 
-            <!-- 📊 Stats / Locker Room button (hidden on main menu) -->
-            <button onclick="openStatsLocker()" class="header-btn" id="stats-btn">📊</button>
+        </div>```
 
-        </div><!-- /#game-header -->
+### **2. Replace the Settings Modal (To remove the scrollbar)**
+To fix the issue you mentioned with the popup having a scrollbar, we need to compress the internal spacing of the `#settings-modal`. 
+
+Scroll up slightly in your `index.html` to **Phase 2**, find your `<div id="settings-modal"...>`, and replace that whole block with this slimmed-down version:
+
+```html
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 400px; text-align: left; padding: 20px;">
+        <h2 style="margin-bottom: 5px; text-align: center;">Platform Settings</h2>
+        <p style="text-align: center; color: var(--dark-text); font-size: 0.85rem; margin-bottom: 15px;">
+            Bring Your Own Key (BYOK) for Infinite AI modes.
+        </p>
+
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--highlight); font-size: 0.9rem;">AI Provider</label>
+        <div id="ai-provider-pills" style="display: flex; gap: 8px; margin-bottom: 15px;">
+            <div class="pill pill-wide active" onclick="selectAIProvider('openai', this)" style="padding: 10px 5px;">OpenAI</div>
+            <div class="pill pill-wide" onclick="selectAIProvider('gemini', this)" style="padding: 10px 5px;">Gemini</div>
+            <div class="pill pill-wide" onclick="selectAIProvider('claude', this)" style="padding: 10px 5px;">Claude</div>
+        </div>
+
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--highlight); font-size: 0.9rem;">API Key</label>
+        <input type="password" id="global-ai-key" class="glass-input" placeholder="Paste your API key here..." style="width: 100%; margin-bottom: 15px; padding: 10px;">
+
+        <button class="btn btn-main" onclick="saveAISettings()" style="width: 100%; margin-top: 5px; padding: 12px;">Save Settings</button>
+        <button class="btn btn-alt" onclick="hideModal('settings-modal')" style="width: 100%; margin-top: 8px; padding: 12px;">Cancel</button>
+    </div>
+</div>
 
 
 <!-- ============================================================
