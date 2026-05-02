@@ -851,15 +851,15 @@ async function _fetchInfiniteAIData() {
         Math.floor(Math.random() * seedThemes[state.gameState.mode].length)
     ] || "popular culture";
 
-    // Enforce Art Disambiguation
-    const artInstruction = state.gameState.mode === 'masterpieces'
-        ? 'CRITICAL: Many artworks share generic names. You MUST append the artist name or medium to the Wikipedia title (e.g., "The Kiss (Klimt)", "David (Michelangelo)", "The Thinker (sculpture)").'
-        : '';
-        
-    // NEW: Enforce Megastar Pop-Culture Relevancy
-    const megastarInstruction = state.gameState.mode === 'megastars'
-        ? 'CRITICAL: Do NOT output obscure 18th-century politicians, niche classical composers, or encyclopedic historical figures. Subjects MUST be universally recognizable, modern pop-culture household names. If they cannot be recognized instantly by a teenager or young adult today, do not include them.'
-        : '';
+   // Dynamically assign STRICT rules based on the category so the AI stops guessing!
+    let specificInstructions = "";
+    if (state.gameState.mode === 'movies') {
+        specificInstructions = 'CRITICAL: The "imageKeyword" MUST be the exact movie title (e.g., "The Matrix", "Jurassic Park"). Do NOT use actors or directors as the imageKeyword.';
+    } else if (state.gameState.mode === 'megastars') {
+        specificInstructions = 'CRITICAL: The "imageKeyword" MUST be the exact name of the PERSON (e.g., "Will Smith", "Serena Williams"). Do NOT use the names of movies, TV shows, or bands. Subjects MUST be universally recognizable, modern pop-culture household names. If they cannot be recognized instantly by a teenager today, do not include them.';
+    } else if (state.gameState.mode === 'masterpieces') {
+        specificInstructions = 'CRITICAL: Many artworks share generic names. You MUST append the artist name or medium to the Wikipedia title (e.g., "The Kiss (Klimt)", "David (Michelangelo)").';
+    }
 
     const sysPrompt = "You are a trivia game content generator. You output strict, valid JSON.";
     
@@ -867,12 +867,10 @@ async function _fetchInfiniteAIData() {
     const userPrompt = `Generate ${state.maxRounds + 8} trivia items for a visual guessing game.
 Category: ${catLabels[state.gameState.mode] || "popular culture"}.
 CRITICAL: Focus specifically on: ${seed}. Do NOT include the most obvious/common answers to ensure variety.
-The "imageKeyword" MUST be the exact English Wikipedia article title (e.g. "The Matrix (franchise)", "Thriller (Michael Jackson album)").
-${artInstruction}
-${megastarInstruction}
+${specificInstructions}
 Format your response as a JSON object with a single key called "items" containing an array.
 Each object in the "items" array must follow this exact shape:
-{ "imageKeyword": "Wikipedia_Title", "answer": "Clean Display Name", "wrong": ["Wrong 1", "Wrong 2", "Wrong 3"] }`;
+{ "imageKeyword": "Exact_Search_Query", "answer": "Clean Display Name", "wrong": ["Wrong 1", "Wrong 2", "Wrong 3"] }`;
     
     try {
         // Call the bridge and force JSON parsing (true)
