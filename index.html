@@ -224,26 +224,28 @@
 </div>
 
 <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 360px; text-align: left; padding: 20px;">
-        <h2 style="margin-bottom: 5px; text-align: center; font-size: 1.3rem;">AI Settings</h2>
-        <p style="text-align: center; color: var(--dark-text); font-size: 0.8rem; margin-bottom: 15px; line-height: 1.3;">
-            Bring Your Own Key (BYOK) for Infinite AI modes.
+    <div class="modal-content" style="max-width: 320px; width: 90%; text-align: left; padding: 15px; box-sizing: border-box;">
+        
+        <h2 style="margin: 0 0 5px 0; text-align: center; font-size: 1.3rem;">AI Settings</h2>
+        <p style="text-align: center; color: var(--dark-text); font-size: 0.8rem; margin: 0 0 15px 0;">
+            Bring Your Own Key (BYOK)
         </p>
 
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--highlight); font-size: 0.85rem;">AI Provider</label>
-        <div id="ai-provider-pills" style="display: flex; gap: 5px; margin-bottom: 12px;">
-            <div class="pill pill-wide active" onclick="selectAIProvider('openai', this)" style="padding: 8px 0; font-size: 0.85rem;">OpenAI</div>
-            <div class="pill pill-wide" onclick="selectAIProvider('gemini', this)" style="padding: 8px 0; font-size: 0.85rem;">Gemini</div>
-            <div class="pill pill-wide" onclick="selectAIProvider('claude', this)" style="padding: 8px 0; font-size: 0.85rem;">Claude</div>
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--highlight); font-size: 0.85rem;">1. Select Provider</label>
+        <div id="ai-provider-pills" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+            <div class="pill active" onclick="selectAIProvider('openai', this)" style="margin: 0; padding: 8px; text-align: center;">OpenAI</div>
+            <div class="pill" onclick="selectAIProvider('gemini', this)" style="margin: 0; padding: 8px; text-align: center;">Gemini</div>
+            <div class="pill" onclick="selectAIProvider('claude', this)" style="margin: 0; padding: 8px; text-align: center;">Claude</div>
         </div>
 
-        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--highlight); font-size: 0.85rem;">API Key</label>
-        <input type="password" id="global-ai-key" class="glass-input" placeholder="Paste key here..." style="width: 100%; margin-bottom: 15px; padding: 10px; font-size: 0.9rem;">
+        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--highlight); font-size: 0.85rem;">2. Enter API Key</label>
+        <input type="password" id="global-ai-key" class="glass-input" placeholder="Paste key here..." style="width: 100%; margin-bottom: 15px; padding: 10px; font-size: 0.9rem; box-sizing: border-box;">
 
         <div style="display: flex; gap: 10px;">
             <button class="btn btn-alt" onclick="hideModal('settings-modal')" style="flex: 1; margin: 0; padding: 12px; font-size: 0.9rem;">Cancel</button>
             <button class="btn btn-main" onclick="saveAISettings()" style="flex: 1; margin: 0; padding: 12px; font-size: 0.9rem;">Save</button>
         </div>
+
     </div>
 </div>
 
@@ -463,18 +465,19 @@
       like a standalone marquee heading rather than a nav label.
   ============================================================ -->
 
-        <div id="game-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; width: 100%; box-sizing: border-box;">
+        <div id="game-header" style="display: flex; flex-direction: column; gap: 12px; padding: 10px; width: 100%; box-sizing: border-box;">
 
-            <div style="flex: 0 0 auto; min-width: 35px;">
-                <button onclick="showModal('multiplayer-modal')" class="header-btn" id="menu-btn" style="position: static; font-size: 1.2rem; padding: 0; transform: none;">☰</button>
-            </div>
+            <h1 id="main-title" style="position: static; margin: 0; text-align: center; transform: none; width: 100%; font-size: 1.4rem; white-space: normal; line-height: 1.2;">YARDBIRD'S GAMES</h1>
 
-            <h1 id="main-title" style="flex: 1 1 auto; position: static; transform: none; text-align: left; margin: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.1rem;">YARDBIRD'S GAMES</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 40px;">
+                
+                <button onclick="showModal('multiplayer-modal')" class="header-btn" id="menu-btn" style="position: static; transform: none; margin: 0; font-size: 1.2rem; padding: 5px 10px;">☰</button>
 
-            <div style="flex: 0 0 auto; display: flex; gap: 8px; align-items: center;">
-                <button onclick="openStatsLocker()" class="header-btn" id="stats-btn" style="position: static; transform: none;">📊</button>
-                <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="position: static; font-size: 1.2rem; padding: 0; transform: none;">⚙️</button>
-                <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn" style="position: static; transform: none;">ℹ️</button>
+                <div style="display: flex; gap: 15px; margin-left: auto; align-items: center;">
+                    <button onclick="openStatsLocker()" class="header-btn" id="stats-btn" style="position: static; transform: none; margin: 0; padding: 5px;">📊</button>
+                    <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="position: static; transform: none; margin: 0; font-size: 1.2rem; padding: 5px;">⚙️</button>
+                    <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn" style="position: static; transform: none; margin: 0; padding: 5px;">ℹ️</button>
+                </div>
             </div>
 
         </div>
