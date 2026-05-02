@@ -118,10 +118,18 @@ export function startGame() {
         if (min <= max) state.doubleRounds.push(Math.floor(Math.random() * (max - min + 1)) + min);
     }
 
-    document.getElementById('start-btn-top').style.display = 'none';
-    document.getElementById('feedback-setup').innerText = "Loading Prompts...";
-    
-    executeFetchLogic();
+    // Platform UI Prep: Show Play Screen immediately so host isn't staring at a blank screen
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('play-screen').classList.remove('hidden');
+            document.querySelectorAll('.header-btn').forEach(btn => btn.classList.add('hidden'));
+            document.getElementById('guess-fields').classList.add('hidden');
+            document.getElementById('btn-container').classList.add('hidden');
+            document.getElementById('reveal-art').style.display = 'none';
+
+            // Show loading on the main feedback display
+            document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.8rem; font-weight:bold; margin-top:40px;">Loading Game Content...</div><div style="color:var(--text-muted); font-size:1rem; margin-top:10px;">If using Infinite AI, this may take a few moments.</div>`;
+            
+            executeFetchLogic();
 }
 
 async function executeFetchLogic() {
@@ -129,8 +137,8 @@ async function executeFetchLogic() {
     state.songs = []; 
     
     if (state.gameState.mode === 'ai_infinite') {
-        try {
-            document.getElementById('feedback-setup').innerText = "Generating absurd AI prompts...";
+            try {
+                document.getElementById('feedback').innerHTML = `<div style="color:var(--primary); font-size:1.8rem; font-weight:bold; margin-top:40px;">Generating absurd AI prompts...</div>`;
 
             let typeInstructions = "";
             if (allowedTypes.includes(1)) typeInstructions += `Type 1 (Who is most likely to): {"type": 1, "prompt": "Who is most likely to..."}. `;
@@ -182,7 +190,7 @@ async function executeFetchLogic() {
 
         } catch(e) {
             console.error(e);
-            document.getElementById('feedback-setup').innerHTML = `<div style="color:var(--fail); font-weight:bold;">❌ AI Generation Failed: ${e.message}. Falling back to Party Pack...</div>`;
+            document.getElementById('feedback').innerHTML = `<div style="color:var(--fail); font-weight:bold; font-size:1.5rem; margin-top:40px;">❌ AI Generation Failed:<br>${e.message}<br>Falling back to Party Pack...</div>`;
             state.songs = [];
             await loadOfflineQuestions(allowedTypes);
         }
@@ -384,7 +392,7 @@ export function renderClientUI(hostState) {
                     inner += `<button class="mc-btn touch-opt" onclick="setConsensusLocalGuess('guess1', '${p.key}'); submitConsensusPayload(true, 1)">${p.val().name} ${isMe ? '(You)' : ''}</button>`;
                 });
             }
-            container.innerHTML = inner;
+            container.innerHTML = html + inner; // ✅ Preserves the prompt html
         });
         return; 
     } 
@@ -717,19 +725,26 @@ export function evaluateMultiplayerRound(players) {
         
         if (window.finalizeMultiplayerRound) {
             // Prevent Firebase crash if nobody was in the room / nobody guessed
-            if (results.length === 0) results.push({ id: "dummy", newScore: 0 }); 
-            window.finalizeMultiplayerRound(results);
+            if (results.length === 0) {
+                db.ref(`rooms/${state.roomCode}/currentMC`).remove();
+                db.ref(`rooms/${state.roomCode}/currentPrompt`).remove();
+            } else {
+                window.finalizeMultiplayerRound(results);
+            }
         }
-        setTimeout(nextRound, 7000); 
+        setTimeout(nextRound, 7000);
         
     } catch (err) {
-        console.error("Evaluation Error: ", err);
-        // If anything fails, it catches it and FORCES the game to advance!
-        document.getElementById('feedback').innerHTML = `<h2 style="color:var(--fail);">Round Skipped.</h2>`;
-        state.curIdx++;
-        if (window.finalizeMultiplayerRound) window.finalizeMultiplayerRound([{ id: "dummy", newScore: 0 }]);
-        setTimeout(nextRound, 4000);
-    }
+            console.error("Evaluation Error: ", err);
+            // If anything fails, it catches it and FORCES the game to advance!
+            document.getElementById('feedback').innerHTML = `<h2 style="color:var(--fail);">Round Skipped.</h2>`;
+            state.curIdx++;
+            
+            db.ref(`rooms/${state.roomCode}/currentMC`).remove();
+            db.ref(`rooms/${state.roomCode}/currentPrompt`).remove();
+            
+            setTimeout(nextRound, 4000);
+        }
 }
 
 // --- Replace endGameSequence in consensusLogic.js ---
@@ -746,7 +761,8 @@ function endGameSequence() {
         
         db.ref(`rooms/${state.roomCode}/players`).once('value', snap => {
             const players = snap.val();
-            const pIds = Object.keys(players || {}).sort();
+            // Filter out any ghost/dummy players without names that got stuck in the database
+            const pIds = Object.keys(players || {}).filter(pid => players[pid].name).sort();
             
             let results = pIds.map((pid, idx) => {
                 // 👈 NEW: Ask Firebase what their score is!
