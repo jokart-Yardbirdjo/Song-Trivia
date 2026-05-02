@@ -535,8 +535,13 @@ async function _nextRound() {
     // ── NEW: Route image fetching to TMDB or Wikipedia ──
     let imageUrl = null;
     if (state.gameState.mode === 'movies') {
-        // No longer reads from localStorage, just calls the fetcher directly
-        imageUrl = await _fetchTMDBImage(revealState.currentData.imageKeyword);
+        imageUrl = await _fetchTMDBImage(revealState.currentData.imageKeyword, 'movie');
+    } else if (state.gameState.mode === 'megastars') {
+        // Use TMDB for pristine celebrity headshots, fallback to Wikipedia if missing
+        imageUrl = await _fetchTMDBImage(revealState.currentData.imageKeyword, 'person');
+        if (!imageUrl) {
+            imageUrl = await _fetchWikipediaImage(revealState.currentData.imageKeyword);
+        }
     } else {
         imageUrl = await _fetchWikipediaImage(revealState.currentData.imageKeyword);
     }
@@ -828,16 +833,18 @@ async function _fetchInfiniteAIData() {
     _setFeedback(`<div class="reveal-loading-msg">✨ AI is generating unique content...</div>`);
 
     // Category labels for the AI prompt
-    const catLabels = {
+       const catLabels = {
         movies:       "Famous Theatrical Movies",
-        megastars:    "A-List Actors, Historical Figures, Pop Icons, and Star Athletes",
+        // UPDATED: Shifted definition away from history and towards modern pop culture
+        megastars:    "Universally recognizable A-List Celebrities, massive Pop Culture Icons, and legendary Athletes",
         masterpieces: "The most famous and recognizable Paintings and Sculptures in history"
     };
 
     // Randomized sub-themes force variety across sessions
     const seedThemes = {
-        movies:       ["1980s cult classics", "sci-fi and fantasy", "Oscar winners", "90s blockbusters", "animated masterpieces", "horror legends"],
-        megastars:    ["historical leaders","2000s pop stars","legendary athletes","famous directors","classical composers","reality TV icons"],
+        movies:       ["1980s cult classics", "Oscar winners", "90s blockbusters", "animated masterpieces", "Romcoms", "Julia Roberts movies", "Superhero movies"],
+        // UPDATED: Replaced obscure historical/classical seeds with high-energy pop-culture guardrails
+        megastars:    ["Current Billboard Top 100 pop stars", "Marvel Cinematic Universe lead actors", "Global football/soccer superstars", "Iconic 90s sit-com stars", "Modern reality TV royalty", "Movie stars", "Tennis Legends", "Athletes"],
         masterpieces: ["Renaissance paintings", "famous historical sculptures", "Impressionist masterpieces", "Baroque art", "Surrealist paintings", "Post-Impressionism"]
     };
     const seed = seedThemes[state.gameState.mode]?.[
@@ -848,6 +855,11 @@ async function _fetchInfiniteAIData() {
     const artInstruction = state.gameState.mode === 'masterpieces'
         ? 'CRITICAL: Many artworks share generic names. You MUST append the artist name or medium to the Wikipedia title (e.g., "The Kiss (Klimt)", "David (Michelangelo)", "The Thinker (sculpture)").'
         : '';
+        
+    // NEW: Enforce Megastar Pop-Culture Relevancy
+    const megastarInstruction = state.gameState.mode === 'megastars'
+        ? 'CRITICAL: Do NOT output obscure 18th-century politicians, niche classical composers, or encyclopedic historical figures. Subjects MUST be universally recognizable, modern pop-culture household names. If they cannot be recognized instantly by a teenager or young adult today, do not include them.'
+        : '';
 
     const sysPrompt = "You are a trivia game content generator. You output strict, valid JSON.";
     
@@ -857,10 +869,11 @@ Category: ${catLabels[state.gameState.mode] || "popular culture"}.
 CRITICAL: Focus specifically on: ${seed}. Do NOT include the most obvious/common answers to ensure variety.
 The "imageKeyword" MUST be the exact English Wikipedia article title (e.g. "The Matrix (franchise)", "Thriller (Michael Jackson album)").
 ${artInstruction}
+${megastarInstruction}
 Format your response as a JSON object with a single key called "items" containing an array.
 Each object in the "items" array must follow this exact shape:
 { "imageKeyword": "Wikipedia_Title", "answer": "Clean Display Name", "wrong": ["Wrong 1", "Wrong 2", "Wrong 3"] }`;
-
+    
     try {
         // Call the bridge and force JSON parsing (true)
         const aiData = await generateAI(sysPrompt, userPrompt, true);
@@ -972,20 +985,26 @@ async function _fetchWikipediaImage(pageTitle) {
  * ────────────────────────────────────
  * Queries The Movie Database (TMDB) for high-resolution theatrical posters.
  */
-async function _fetchTMDBImage(movieTitle) {
+async function _fetchTMDBImage(queryStr, type = 'movie') {
     const apiKey = "1bcd3d06b740a01fae3d8365f9faf895";
     
-    // AUTO-HEAL: Strips Wikipedia tags like "(2000 film)" so TMDB can find it
-    const cleanTitle = movieTitle.replace(/\s*\(.*?\)\s*/g, '').trim();
+    // AUTO-HEAL: Strips Wikipedia tags so TMDB can find it cleanly
+    const cleanTitle = queryStr.replace(/\s*\(.*?\)\s*/g, '').trim();
     
-    const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanTitle)}&api_key=${apiKey}&language=en-US&page=1&include_adult=false`;
+    const url = `https://api.themoviedb.org/3/search/${type}?query=${encodeURIComponent(cleanTitle)}&api_key=${apiKey}&language=en-US&page=1&include_adult=false`;
     
     try {
         const res = await fetch(url);
         if (!res.ok) return null;
         const data = await res.json();
-        if (data.results && data.results.length > 0 && data.results[0].poster_path) {
-            return `https://image.tmdb.org/t/p/w780${data.results[0].poster_path}`;
+        
+        if (data.results && data.results.length > 0) {
+            if (type === 'movie' && data.results[0].poster_path) {
+                return `https://image.tmdb.org/t/p/w780${data.results[0].poster_path}`;
+            } else if (type === 'person' && data.results[0].profile_path) {
+                // TMDB profile size 'h632' is perfect for high-res headshots
+                return `https://image.tmdb.org/t/p/h632${data.results[0].profile_path}`;
+            }
         }
         return null;
     } catch (err) {
