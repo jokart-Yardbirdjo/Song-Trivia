@@ -2,6 +2,7 @@
 import { db } from './firebase.js';
 //import { state, sfxTick, sfxCheer, sfxBuzzer, colors, bgm } from './state.js';
 import { state, sfxTick, sfxCheer, sfxBuzzer, colors } from './state.js';
+import { generateAI } from './ai.js';
 
 export const manifest = {
     id: "consensus",
@@ -128,15 +129,6 @@ async function executeFetchLogic() {
     state.songs = []; 
     
     if (state.gameState.mode === 'ai_infinite') {
-        const apiKey = document.getElementById('custom-input').value.trim(); 
-        if (!apiKey) {
-            alert("Please paste your OpenAI API Key in the custom input box!");
-            document.getElementById('start-btn-top').style.display = 'block';
-            document.getElementById('feedback-setup').innerText = "";
-            return;
-        }
-        localStorage.setItem('consensus_openai_key', apiKey);
-        
         try {
             document.getElementById('feedback-setup').innerText = "Generating absurd AI prompts...";
 
@@ -147,22 +139,13 @@ async function executeFetchLogic() {
             if (allowedTypes.includes(4)) typeInstructions += `Type 4 (Confession): {"type": 4, "prompt": "Raise your hand if..."}. `;
             if (allowedTypes.includes(5)) typeInstructions += `Type 5 (Guesstimation): {"type": 5, "prompt": "A factual numeric guess question...", "answer": <int>}. Important: DO NOT generate questions about how many jellybeans (or objects) fit inside a container. Prioritize variety like speed, weight, population, time, distance, or cost. `;
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [{ 
-                        role: "system", 
-                        content: `Generate EXACTLY ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. You MUST provide an equal distribution of these types. Format as JSON object with "questions" array. ${typeInstructions}`
-                    }],
-                    response_format: { type: "json_object" },
-                    temperature: 1.1 
-                })
-            });
-            
-            const data = await response.json();
-            let generatedQuestions = JSON.parse(data.choices[0].message.content).questions;
+            // Construct Prompts for the AI Bridge
+            const sysPrompt = "You are a creative party game generator. You output strict, valid JSON.";
+            const userPrompt = `Generate EXACTLY ${state.maxRounds} absurd, G-rated questions for a party game. You MUST ONLY generate questions from the Allowed Types: ${allowedTypes.join(', ')}. You MUST provide an equal distribution of these types. Format as a JSON object with a "questions" array. ${typeInstructions}`;
+
+            // Call the global AI bridge and force JSON (true)
+            const aiData = await generateAI(sysPrompt, userPrompt, true);
+            let generatedQuestions = aiData.questions;
 
             state.songs = generatedQuestions
                 .map(q => ({ ...q, type: parseInt(q.type) }))
@@ -172,6 +155,7 @@ async function executeFetchLogic() {
             
             if (state.songs.length === 0) throw new Error("AI generated invalid question types.");
 
+            // FALLBACK: If AI didn't generate enough valid questions, pad with offline data
             if (state.songs.length < state.maxRounds) {
                 const needed = state.maxRounds - state.songs.length;
                 const res = await fetch('db_consensus.json');
@@ -198,7 +182,7 @@ async function executeFetchLogic() {
 
         } catch(e) {
             console.error(e);
-            alert("AI Generation failed or hallucinated. Falling back to Party Pack.");
+            document.getElementById('feedback-setup').innerHTML = `<div style="color:var(--fail); font-weight:bold;">❌ AI Generation Failed: ${e.message}. Falling back to Party Pack...</div>`;
             state.songs = [];
             await loadOfflineQuestions(allowedTypes);
         }
@@ -807,13 +791,6 @@ function endGameSequence() {
 
 export function onModeSelect(mode) {
     const customInput = document.getElementById('custom-input');
-    if (mode === 'ai_infinite') {
-        customInput.classList.remove('hidden');
-        customInput.placeholder = "Paste your OpenAI API Key...";
-        customInput.type = "password"; 
-        const savedKey = localStorage.getItem('consensus_openai_key');
-        if (savedKey) customInput.value = savedKey;
-    } else if (mode === 'party_pack') {
-        customInput.classList.add('hidden');
-    }
+    // Global AI Bridge handles the API key. Ensure custom text input remains hidden.
+    if (customInput) customInput.classList.add('hidden');
 }
