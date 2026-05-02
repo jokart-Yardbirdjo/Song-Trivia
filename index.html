@@ -224,8 +224,8 @@
 </div>
 
 <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 360px; text-align: left; padding: 15px;">
-        <h2 style="margin-bottom: 5px; text-align: center; font-size: 1.3rem;">Platform Settings</h2>
+    <div class="modal-content" style="max-width: 360px; text-align: left; padding: 20px;">
+        <h2 style="margin-bottom: 5px; text-align: center; font-size: 1.3rem;">AI Settings</h2>
         <p style="text-align: center; color: var(--dark-text); font-size: 0.8rem; margin-bottom: 15px; line-height: 1.3;">
             Bring Your Own Key (BYOK) for Infinite AI modes.
         </p>
@@ -463,20 +463,19 @@
       like a standalone marquee heading rather than a nav label.
   ============================================================ -->
 
-        <div id="game-header">
+        <div id="game-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px; width: 100%; box-sizing: border-box;">
 
-            <button onclick="showModal('multiplayer-modal')"
-                    class="header-btn"
-                    id="menu-btn"
-                    style="left: 10px; font-size: 1.2rem; padding-bottom: 4px;">
-                ☰
-            </button>
+            <div style="flex: 0 0 auto; min-width: 35px;">
+                <button onclick="showModal('multiplayer-modal')" class="header-btn" id="menu-btn" style="position: static; font-size: 1.2rem; padding: 0; transform: none;">☰</button>
+            </div>
 
-            <h1 id="main-title" style="position: absolute; left: 45px; right: 125px; transform: none; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(1rem, 4vw, 1.2rem);">YARDBIRD'S GAMES</h1>
+            <h1 id="main-title" style="flex: 1 1 auto; position: static; transform: none; text-align: left; margin: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.1rem;">YARDBIRD'S GAMES</h1>
 
-            <button onclick="openStatsLocker()" class="header-btn" id="stats-btn" style="right: 85px;">📊</button>
-            <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="right: 45px; font-size: 1.2rem; padding-bottom: 4px;">⚙️</button>
-            <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn" style="right: 10px;">ℹ️</button>
+            <div style="flex: 0 0 auto; display: flex; gap: 8px; align-items: center;">
+                <button onclick="openStatsLocker()" class="header-btn" id="stats-btn" style="position: static; transform: none;">📊</button>
+                <button onclick="showModal('settings-modal')" class="header-btn" id="settings-btn" style="position: static; font-size: 1.2rem; padding: 0; transform: none;">⚙️</button>
+                <button onclick="showModal('rules-modal')" class="header-btn" id="info-btn" style="position: static; transform: none;">ℹ️</button>
+            </div>
 
         </div>
 
